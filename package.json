@@ -1,0 +1,34 @@
+{
+  "name": "synco-redux",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
+  "main": "./dist/synco-redux.umd.cjs",
+  "module": "./dist/synco-redux.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "types": "./index.d.ts",
+    "import": "./dist/synco-redux.js",
+    "require": "./dist/synco-redux.umd.cjs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/webextension-polyfill": "^0.12.3",
+    "typescript": "~5.7.3",
+    "vite": "^6.1.1",
+    "vitest": "^3.0.7",
+    "webextension-polyfill": "^0.12.0"
+  },
+  "peerDependencies": {
+    "@reduxjs/toolkit": "^2.6.0",
+    "immer": "^10.1.1"
+  }
+}
