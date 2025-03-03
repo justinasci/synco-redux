@@ -1,7 +1,8 @@
 {
   "name": "synco-redux",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
+  "license": "Apache-2.0",
   "files": [
     "dist",
     "index.d.ts"
