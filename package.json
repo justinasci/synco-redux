@@ -1,11 +1,14 @@
 {
   "name": "synco-redux",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:justinasci/synco-redux.git"
+  },
   "files": [
-    "dist",
-    "index.d.ts"
+    "dist"
   ],
   "main": "./dist/synco-redux.umd.cjs",
   "module": "./dist/synco-redux.js",
