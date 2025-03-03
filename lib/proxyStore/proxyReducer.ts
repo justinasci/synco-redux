@@ -1,5 +1,5 @@
 
-import { Patch } from "../masterStore/patchGenerator";
+import { Patch } from "../mainStore/patchGenerator";
 import { initialState, ProxyState } from "./proxyStore";
 import { produce } from "immer";
 

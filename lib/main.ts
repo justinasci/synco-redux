@@ -1,4 +1,4 @@
-import { createMainStoreEnhancer } from "./masterStore/masterStore";
+import { createMainStoreEnhancer } from "./mainStore/mainStore";
 import { createProxyStoreEnhancer } from "./proxyStore/proxyStore";
 import { isProxyReady } from "./proxyStore/isProxyReady";
 import { isProxyStore } from "./proxyStore/isProxyStore";

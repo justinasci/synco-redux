@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { generatePatches } from "../masterStore/patchGenerator";
+import { generatePatches } from "../mainStore/patchGenerator";
 
 
 describe("generatePatches", () => {
