@@ -15,7 +15,7 @@ export const initialState: ProxyState = {
     isStateSynced: false
 };
 
-export const createProxyStoreEnhancer = (instanceId = ""): StoreEnhancer => {
+export const createProxyStoreEnhancer = (): StoreEnhancer => {
 
     const port = browser.runtime.connect({ name: SYNCO_PORT_ID, });
 
