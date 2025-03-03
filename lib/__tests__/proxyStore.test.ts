@@ -4,7 +4,7 @@ import { mockPort } from '../__mocks__/browser';
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { createProxyStoreEnhancer, immerProxyStoreReducer } from '../main';
 import { applyPatch } from '../proxyStore/proxyReducer';
-import { Patch } from '../masterStore/patchGenerator';
+import { Patch } from '../mainStore/patchGenerator';
 
 
 const initialState = { count: 0, name: "___", itms: [1, 2, 4] };

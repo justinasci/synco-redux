@@ -6,6 +6,7 @@ export const isProxyReady =
 
         if (isProxyStore(proxyStore)) {
             resolve();
+            return;
         }
 
         const unsubscribe = proxyStore.subscribe(() => {
