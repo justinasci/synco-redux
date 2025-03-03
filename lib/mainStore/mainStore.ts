@@ -68,7 +68,7 @@ export const createMainStoreEnhancer = (): StoreEnhancer => {
 
             const nextState = store.getState(); // Capture state after dispatch
 
-            // Generate patches comparing the previous and next state using Immer
+            // Generate patches comparing the previous and next state
             let patches: Patch[] = generatePatches(prevState, nextState);
             submitPatches(patches);
 
