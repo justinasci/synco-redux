@@ -1,59 +1,71 @@
-import { type Store, type StoreEnhancer } from "@reduxjs/toolkit";
-import browser from "webextension-polyfill";
+import { type Store, type StoreEnhancer } from '@reduxjs/toolkit';
+import browser from 'webextension-polyfill';
 
-import { SYNC_KEY, SYNCO_PORT_ID } from "../constants";
-import { dispatchMesssage, isSyncMessage, PATCH_STATE, SYNC_GLOBAL, syncMessage, SyncMessage } from "../SyncMessage";
-import { APPLY_PATCH_ACTION, applyPatch, SYNC_GLOBAL_ACTION, syncGlobal } from "./proxyReducer";
-
+import { SYNC_KEY, SYNCO_PORT_ID } from '../constants';
+import {
+	dispatchMesssage,
+	isSyncMessage,
+	PATCH_STATE,
+	SYNC_GLOBAL,
+	syncMessage,
+	SyncMessage
+} from '../SyncMessage';
+import {
+	APPLY_PATCH_ACTION,
+	applyPatch,
+	SYNC_GLOBAL_ACTION,
+	syncGlobal
+} from './proxyReducer';
 
 export interface ProxyState {
-    [SYNC_KEY]: boolean;
-    [key: string]: any;
+	[SYNC_KEY]: boolean;
+	[key: string]: unknown;
 }
 
 export const initialState: ProxyState = {
-    isStateSynced: false
+	isStateSynced: false
 };
 
 export const createProxyStoreEnhancer = (): StoreEnhancer => {
+	const port = browser.runtime.connect({ name: SYNCO_PORT_ID });
 
-    const port = browser.runtime.connect({ name: SYNCO_PORT_ID, });
+	const handleMessage = (store: Store, message: SyncMessage) => {
+		if (message.type === PATCH_STATE) {
+			store.dispatch(applyPatch(message.patches));
+		} else if (message.type === SYNC_GLOBAL) {
+			store.dispatch(syncGlobal(message.state as never));
+		}
+	};
 
-    const handleMessage = (store: Store, message: SyncMessage) => {
+	const enhancer: StoreEnhancer = (createStore) => (reducers, initalState) => {
+		const store = createStore(reducers, initalState);
+		const originalDispatch = store.dispatch;
 
-        if (message.type === PATCH_STATE) {
-            store.dispatch(applyPatch(message.patches) as any);
-        } else if (message.type === SYNC_GLOBAL) {
-            store.dispatch(syncGlobal(message.state) as any);
-        }
-    }
+		store.dispatch = (action) => {
+			if (
+				(<string[]>[APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION]).includes(
+					action.type
+				)
+			) {
+				return originalDispatch(action);
+			}
 
-    const enhancer: StoreEnhancer = (createStore) => (reducers, initalState) => {
-        const store = createStore(reducers, initalState);
-        const originalDispatch = store.dispatch;
+			port.postMessage(dispatchMesssage(action));
+			return action;
+		};
 
-        store.dispatch = (action) => {
-            if ([APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION].includes(action.type as any)) {
-                return originalDispatch(action);
-            }
+		port.onMessage.addListener((message) => {
+			if (!isSyncMessage(message)) {
+				return;
+			}
 
-            port.postMessage(dispatchMesssage(action));
-            return action;
-        };
+			handleMessage(store, message as SyncMessage);
+		});
 
-        port.onMessage.addListener((message) => {
-            if (!isSyncMessage(message)) {
-                return;
-            }
+		port.postMessage(syncMessage());
 
-            handleMessage(store, message as SyncMessage);
-        });
+		return store;
+	};
 
-        port.postMessage(syncMessage());
-
-        return store;
-
-    }
-
-    return enhancer;
+	return enhancer;
 };

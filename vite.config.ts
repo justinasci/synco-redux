@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import dts from "vite-plugin-dts";
+import eslint from 'vite-plugin-eslint';
 
 export default defineConfig({
   build: {
@@ -24,5 +25,5 @@ export default defineConfig({
   plugins: [dts({
     tsconfigPath: './tsconfig.json', // Optional: if you want to specify a tsconfig file
     insertTypesEntry: true, // Add a reference to `types.d.ts` in the entry file
-  })]
+  }), eslint()]
 })
