@@ -18,6 +18,9 @@ export default defineConfig({
       fileName: 'synco-redux',
     },
   },
+  test: {
+    setupFiles: ["vitest.setup.ts"],
+  },
   plugins: [dts({
     tsconfigPath: './tsconfig.json', // Optional: if you want to specify a tsconfig file
     insertTypesEntry: true, // Add a reference to `types.d.ts` in the entry file
