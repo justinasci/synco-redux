@@ -3,10 +3,10 @@ import { StoreEnhancer } from '@reduxjs/toolkit';
 import { generatePatches, Patch } from './patchGenerator';
 
 import { IComms } from '../adapters/IComms';
-import { BrowserExtensionMainComms } from '../adapters/BrowserExtensionMainComms';
+import { PortMainComms } from '../adapters/PortMainComms';
 
 export const createMainStoreEnhancer = (
-	comms: IComms = new BrowserExtensionMainComms()
+	comms: IComms = new PortMainComms()
 ): StoreEnhancer => {
 	const enhancer: StoreEnhancer = (createStore) => (reducer, preloadstate) => {
 		const store = createStore(reducer, preloadstate);

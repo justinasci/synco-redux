@@ -12,7 +12,7 @@ import {
 } from '../SyncMessage';
 import { Patch } from '../mainStore/patchGenerator';
 
-export class BrowserExtensionMainComms implements IComms {
+export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
 
 	init = (store: Store) => {

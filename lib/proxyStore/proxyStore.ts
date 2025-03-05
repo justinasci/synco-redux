@@ -4,7 +4,7 @@ import { SYNC_KEY } from '../constants';
 import { dispatchMesssage } from '../SyncMessage';
 import { APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION } from './proxyReducer';
 import { IProxyComms } from '../adapters/IProxyComms';
-import { BrowserExtensionProxyComms } from '../adapters/BrowserExtensionProxyComms';
+import { BrowserExtensionProxyComms } from '../adapters/PortProxyComms';
 
 export interface ProxyState {
 	[SYNC_KEY]: boolean;

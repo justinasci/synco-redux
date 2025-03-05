@@ -20,17 +20,17 @@ vi.mock('webextension-polyfill', () => {
 });
 
 import Browser from 'webextension-polyfill';
-import { BrowserExtensionMainComms } from '../adapters/BrowserExtensionMainComms';
+import { PortMainComms } from '../adapters/PortMainComms';
 
 // Mock store
 const mockStore = configureStore({ reducer: () => {} });
 
 describe('BrowserExtensionMainComms', () => {
-	let comms: BrowserExtensionMainComms;
+	let comms: PortMainComms;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		comms = new BrowserExtensionMainComms();
+		comms = new PortMainComms();
 	});
 
 	it('should listen for connections on init', () => {

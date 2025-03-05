@@ -25,7 +25,7 @@ import {
 import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
 
 import Browser from 'webextension-polyfill';
-import { BrowserExtensionProxyComms } from '../adapters/BrowserExtensionProxyComms';
+import { BrowserExtensionProxyComms } from '../adapters/PortProxyComms';
 
 // Mock the store and actions
 const mockDispatch = vi.fn();
