@@ -1,68 +1,66 @@
-import { configureStore, createSlice } from '@reduxjs/toolkit';
-import { enablePatches } from 'immer';
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-enablePatches();
-
-import { MockBrowser, mockBrowser } from '../__mocks__/browser';
-vi.mock('webextension-polyfill', () => {
-	return {
-		default: mockBrowser()
-	};
-});
-
+import { IComms } from '../adapters/IComms';
+import { configureStore, createSlice, EnhancedStore } from '@reduxjs/toolkit';
 import { createMainStoreEnhancer } from '../main';
 
-import browser from 'webextension-polyfill';
+describe('mainStore', () => {
+	const comms: IComms = {
+		init: vi.fn(),
+		submitPatches: vi.fn()
+	};
 
-const mockedBrowser = browser as unknown as MockBrowser;
-
-const mainStoreSlice = createSlice({
-	name: 'mainStore',
-	initialState: {
-		count: 0,
-		oldst: '111',
-		neste: {
-			some: {
-				old: 123124,
-				more: {
-					stuff: 999
+	const mainStoreSlice = createSlice({
+		name: 'mainStore',
+		initialState: {
+			count: 0,
+			oldst: '111',
+			neste: {
+				some: {
+					old: 123124,
+					more: {
+						stuff: 999
+					}
 				}
 			}
-		}
-	},
-	reducers: {
-		increment: (state) => {
-			state.count += 1;
 		},
-		crazy: (state) => {
-			state.neste.some.old = 0;
+		reducers: {
+			increment: (state: { count: number }) => {
+				state.count += 1;
+			},
+			crazy: (state: { neste: { some: { old: number } } }) => {
+				state.neste.some.old = 0;
+			}
 		}
-	}
-});
-
-describe('MainStore', () => {
-	let mainStore = configureStore({
-		reducer: mainStoreSlice.reducer,
-		enhancers: (d) => d().concat(createMainStoreEnhancer())
 	});
+
+	let mainStore: EnhancedStore;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		mainStore = configureStore({
 			reducer: mainStoreSlice.reducer,
-			enhancers: (d) => d().concat(createMainStoreEnhancer())
+			enhancers: (d) => d().concat(createMainStoreEnhancer(comms))
 		});
 	});
 
-	it('should send patches to subscriebers', () => {
-		mainStore.dispatch(mainStoreSlice.actions.increment());
-		expect(mainStore.getState().count).toBe(1);
-		expect(mockedBrowser.runtime.onConnect.addListener).toHaveBeenCalledOnce();
+	it('should initialize comms', () => {
+		expect(comms.init).toHaveBeenCalled();
 	});
 
-	it('should send nested patches to subscriebers', () => {
-		mainStore.dispatch(mainStoreSlice.actions.crazy());
+	it('should update internal state', () => {
+		mainStore.dispatch(mainStoreSlice.actions.increment());
+		expect(mainStore.getState().count).toBe(1);
+	});
+
+	it('should dispatch patches to comms', () => {
+		mainStore.dispatch(mainStoreSlice.actions.increment());
+		expect(comms.submitPatches).toHaveBeenCalledWith([
+			{
+				op: 'replace',
+				path: ['count'],
+				value: 1
+			}
+		]);
 	});
 });

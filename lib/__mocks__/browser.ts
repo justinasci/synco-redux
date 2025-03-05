@@ -32,8 +32,6 @@ export const mockPortListener = (handler: ConnectionHandler) => {
 	const onDisconned: (() => void)[] = [];
 	const connections: MockPort[] = [];
 
-	console.log('created port listener');
-
 	const fakeListener = {
 		receiveMessage: (message: unknown) => {
 			onMessage.forEach((handler) => handler(message));

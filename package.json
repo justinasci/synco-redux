@@ -21,10 +21,12 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc && vite build",
-		"test": "vitest"
+		"test": "vitest",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@types/webextension-polyfill": "^0.12.3",
+		"@vitest/coverage-v8": "^3.0.7",
 		"eslint": "^9.21.0",
 		"prettier": "^3.5.3",
 		"typescript": "~5.7.3",

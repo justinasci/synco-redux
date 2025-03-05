@@ -1,21 +1,10 @@
-import { type Store, type StoreEnhancer } from '@reduxjs/toolkit';
-import browser from 'webextension-polyfill';
+import { type StoreEnhancer } from '@reduxjs/toolkit';
 
-import { SYNC_KEY, SYNCO_PORT_ID } from '../constants';
-import {
-	dispatchMesssage,
-	isSyncMessage,
-	PATCH_STATE,
-	SYNC_GLOBAL,
-	syncMessage,
-	SyncMessage
-} from '../SyncMessage';
-import {
-	APPLY_PATCH_ACTION,
-	applyPatch,
-	SYNC_GLOBAL_ACTION,
-	syncGlobal
-} from './proxyReducer';
+import { SYNC_KEY } from '../constants';
+import { dispatchMesssage } from '../SyncMessage';
+import { APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION } from './proxyReducer';
+import { IProxyComms } from '../adapters/IProxyComms';
+import { BrowserExtensionProxyComms } from '../adapters/BrowserExtensionProxyComms';
 
 export interface ProxyState {
 	[SYNC_KEY]: boolean;
@@ -26,16 +15,10 @@ export const initialState: ProxyState = {
 	isStateSynced: false
 };
 
-export const createProxyStoreEnhancer = (): StoreEnhancer => {
-	const port = browser.runtime.connect({ name: SYNCO_PORT_ID });
-
-	const handleMessage = (store: Store, message: SyncMessage) => {
-		if (message.type === PATCH_STATE) {
-			store.dispatch(applyPatch(message.patches));
-		} else if (message.type === SYNC_GLOBAL) {
-			store.dispatch(syncGlobal(message.state as never));
-		}
-	};
+export const createProxyStoreEnhancer = (
+	comms: IProxyComms = new BrowserExtensionProxyComms()
+): StoreEnhancer => {
+	comms.connect();
 
 	const enhancer: StoreEnhancer = (createStore) => (reducers, initalState) => {
 		const store = createStore(reducers, initalState);
@@ -50,19 +33,11 @@ export const createProxyStoreEnhancer = (): StoreEnhancer => {
 				return originalDispatch(action);
 			}
 
-			port.postMessage(dispatchMesssage(action));
+			comms.postMessage(dispatchMesssage(action));
 			return action;
 		};
 
-		port.onMessage.addListener((message) => {
-			if (!isSyncMessage(message)) {
-				return;
-			}
-
-			handleMessage(store, message as SyncMessage);
-		});
-
-		port.postMessage(syncMessage());
+		comms.init(store);
 
 		return store;
 	};
