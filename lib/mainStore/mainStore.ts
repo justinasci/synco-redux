@@ -16,6 +16,8 @@ export const createMainStoreEnhancer = (): StoreEnhancer => {
 	let openPorts: browser.Runtime.Port[] = [];
 
 	const addPortListener = (store: Store) => {
+
+		console.log('ADDING PORT LISTENR');
 		browser.runtime.onConnect.addListener((port) => {
 			if (port.name !== SYNCO_PORT_ID) {
 				return;

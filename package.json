@@ -32,11 +32,11 @@
 		"vite": "^6.1.1",
 		"vite-plugin-dts": "^4.5.3",
 		"vite-plugin-eslint": "^1.8.1",
-		"vitest": "^3.0.7",
-		"webextension-polyfill": "^0.12.0"
+		"vitest": "^3.0.7"
 	},
 	"peerDependencies": {
 		"@reduxjs/toolkit": "^2.6.0",
-		"immer": "^10.1.1"
+		"immer": "^10.1.1",
+		"webextension-polyfill": "^0.12.0"
 	}
 }
