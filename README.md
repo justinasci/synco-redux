@@ -1,5 +1,5 @@
 
-# synco-redux
+# synco-redux [![NPM Version](https://badge.fury.io/js/synco-redux.svg?style=flat)](https://npmjs.org/package/synco-redux)
 A lightweight Redux enhancer for syncing state across a browser extension, including the background script, popup, popovers, extension tabs, and content scripts.
 
 ## Installation
