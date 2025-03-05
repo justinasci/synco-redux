@@ -1,70 +1,163 @@
-// src/tests/proxyStoreIntegration.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockPort } from '../__mocks__/browser';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, EnhancedStore } from '@reduxjs/toolkit';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProxyStoreEnhancer, immerProxyStoreReducer } from '../main';
-import { applyPatch } from '../proxyStore/proxyReducer';
-import { Patch } from '../mainStore/patchGenerator';
+import { IProxyComms } from '../adapters/IProxyComms';
+import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
+import { SYNC_KEY } from '../constants';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const initialState = { count: 0, name: '___', itms: [1, 2, 4] };
+describe('proxyStore', () => {
+	const comms: IProxyComms = {
+		init: vi.fn(),
+		connect: vi.fn(),
+		postMessage: vi.fn()
+	};
 
-export const proxyStore = configureStore({
-	reducer: immerProxyStoreReducer<typeof initialState>,
-	enhancers: (d) => d().concat(createProxyStoreEnhancer())
-});
+	let proxyStore: EnhancedStore;
 
-describe('Proxy Store Integration', () => {
 	beforeEach(() => {
-		vi.clearAllMocks(); // Reset mocks before each test
-	});
-
-	it('should forward action from proxy store to main store', () => {
-		// Simulate dispatching an action in the proxy store
-		proxyStore.dispatch({ type: 'mainStore/increment', payload: undefined });
-
-		// Expect the message to be sent to the main store
-		expect(mockPort.postMessage).toHaveBeenCalledWith({
-			type: 'DISPATCH_ACTION',
-			action: { type: 'mainStore/increment', payload: undefined }
+		vi.resetAllMocks();
+		proxyStore = configureStore({
+			reducer: immerProxyStoreReducer,
+			enhancers: (d) => d().concat(createProxyStoreEnhancer(comms))
 		});
 	});
 
-	it('should replace state', () => {
+	it('should connect to comms', () => {
+		expect(comms.connect).toHaveBeenCalled();
+	});
+
+	it('should dispatch action to comms', () => {
+		proxyStore.dispatch({
+			type: 'SOME_RANDOM_ACTION',
+			payload: 'SOME PAYLOAD'
+		});
+
+		expect(comms.postMessage).toBeCalledWith({
+			action: {
+				payload: 'SOME PAYLOAD',
+				type: 'SOME_RANDOM_ACTION'
+			},
+			type: 'DISPATCH_ACTION'
+		});
+	});
+
+	it('should not dispatch internal actions', () => {
+		proxyStore.dispatch(applyPatch([]));
+		proxyStore.dispatch(syncGlobal({}));
+		expect(comms.postMessage).not.toHaveBeenCalled();
+	});
+
+	it('should set sync flag when sync is dispatched', () => {
+		expect(proxyStore.getState()[SYNC_KEY]).toBe(false);
+		proxyStore.dispatch(syncGlobal({}));
+		expect(proxyStore.getState()[SYNC_KEY]).toBe(true);
+	});
+
+	it('should add state from patches', () => {
 		proxyStore.dispatch(
-			applyPatch([{ op: 'replace', path: ['count'], value: 10 }])
+			applyPatch([{ op: 'add', path: ['test'], value: 'TEST_VAL' }])
+		);
+		expect(proxyStore.getState()['test']).toBe('TEST_VAL');
+	});
+
+	it('should add deep state from patches', () => {
+		proxyStore.dispatch(
+			applyPatch([
+				{
+					op: 'add',
+					path: ['test'],
+					value: {
+						tester: 'TEST_VAL'
+					}
+				}
+			])
 		);
 
-		expect(mockPort.postMessage).not.toHaveBeenCalled();
-
-		expect(proxyStore.getState().count).toBe(10);
-	});
-
-	it('should add a new property to the state', () => {
-		const patches = [{ op: 'add', path: ['age'], value: 30 }] as Patch[];
-
-		proxyStore.dispatch(applyPatch(patches));
-
-		// Check if the new property has been added
-
-		//@ts-expect-error added state
-		expect(proxyStore.getState().age).toBe(30);
-	});
-
-	it('should delete a property from the state', () => {
-		const patches = [{ op: 'remove', path: ['name'] }] as Patch[];
-
-		proxyStore.dispatch(applyPatch(patches));
-
-		// Check if the property has been removed
-		expect(proxyStore.getState().name).toBeUndefined();
-	});
-
-	it('should update arrays', () => {
 		proxyStore.dispatch(
-			applyPatch([{ op: 'replace', path: ['itms', 2], value: 999 }])
+			applyPatch([{ op: 'add', path: ['test', 'test2'], value: 'TEST_ADDED' }])
+		);
+		expect(proxyStore.getState()['test']['test2']).toStrictEqual('TEST_ADDED');
+	});
+
+	it('should remove state from patches', () => {
+		proxyStore.dispatch(
+			applyPatch([{ op: 'add', path: ['test'], value: 'TEST_VAL' }])
 		);
 
-		expect(proxyStore.getState().itms[2]).toBe(999);
+		proxyStore.dispatch(applyPatch([{ op: 'remove', path: ['test'] }]));
+		expect(proxyStore.getState()['test']).toBe(undefined);
+	});
+
+	it('should remove deep from patches', () => {
+		proxyStore.dispatch(
+			applyPatch([
+				{
+					op: 'add',
+					path: ['test'],
+					value: {
+						tester: 'TEST_VAL'
+					}
+				}
+			])
+		);
+
+		proxyStore.dispatch(
+			applyPatch([{ op: 'remove', path: ['test', 'tester'] }])
+		);
+		expect(proxyStore.getState()['test']).toStrictEqual({});
+	});
+
+	it('should remove element from array', () => {
+		proxyStore.dispatch(
+			applyPatch([{ op: 'add', path: ['test'], value: [1, 2, 3, 4] }])
+		);
+		proxyStore.dispatch(applyPatch([{ op: 'remove', path: ['test', 2] }]));
+
+		expect(proxyStore.getState()['test']).toStrictEqual([1, 2, 4]);
+	});
+
+	it('should update state from patches', () => {
+		proxyStore.dispatch(
+			applyPatch([{ op: 'add', path: ['test'], value: 'TEST_VAL' }])
+		);
+
+		proxyStore.dispatch(
+			applyPatch([{ op: 'replace', path: ['test'], value: 'UPDATED_VAL' }])
+		);
+		expect(proxyStore.getState()['test']).toBe('UPDATED_VAL');
+	});
+
+	it('should update deep key', () => {
+		proxyStore.dispatch(
+			applyPatch([
+				{
+					op: 'add',
+					path: ['test'],
+					value: {
+						tester: 'TEST_VAL'
+					}
+				}
+			])
+		);
+
+		proxyStore.dispatch(
+			applyPatch([
+				{ op: 'replace', path: ['test', 'tester'], value: 'UPDATED_VAL' }
+			])
+		);
+		expect(proxyStore.getState()['test']['tester']).toBe('UPDATED_VAL');
+	});
+
+	it('should skip unknow patch operations', () => {
+		const originalState = proxyStore.getState();
+
+		proxyStore.dispatch(
+			applyPatch([
+				//@ts-expect-error invalid op
+				{ op: 'xxx', path: ['test', 'tester'], value: 'UPDATED_VAL' }
+			])
+		);
+
+		expect(originalState).toEqual(proxyStore.getState());
 	});
 });

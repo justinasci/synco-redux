@@ -1,79 +1,66 @@
-import { configureStore, createSlice } from "@reduxjs/toolkit";
-import { mockPort } from "../__mocks__/browser";
-import { enablePatches } from "immer";
-import { createMainStoreEnhancer } from "../main";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-enablePatches();
+import { IComms } from '../adapters/IComms';
+import { configureStore, createSlice, EnhancedStore } from '@reduxjs/toolkit';
+import { createMainStoreEnhancer } from '../main';
 
-const mainStoreSlice = createSlice({
-    name: 'mainStore',
-    initialState: {
-        count: 0, oldst: "111", neste: {
-            some: {
-                old: 123124,
-                more: {
-                    stuff: 999
-                }
-            }
-        }
-    },
-    reducers: {
-        increment: (state) => {
-            state.count += 1;
-        },
-        crazy: (state) => {
-            state.neste.some.old = 0;
-        }
-    },
+describe('mainStore', () => {
+	const comms: IComms = {
+		init: vi.fn(),
+		submitPatches: vi.fn()
+	};
+
+	const mainStoreSlice = createSlice({
+		name: 'mainStore',
+		initialState: {
+			count: 0,
+			oldst: '111',
+			neste: {
+				some: {
+					old: 123124,
+					more: {
+						stuff: 999
+					}
+				}
+			}
+		},
+		reducers: {
+			increment: (state: { count: number }) => {
+				state.count += 1;
+			},
+			crazy: (state: { neste: { some: { old: number } } }) => {
+				state.neste.some.old = 0;
+			}
+		}
+	});
+
+	let mainStore: EnhancedStore;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		mainStore = configureStore({
+			reducer: mainStoreSlice.reducer,
+			enhancers: (d) => d().concat(createMainStoreEnhancer(comms))
+		});
+	});
+
+	it('should initialize comms', () => {
+		expect(comms.init).toHaveBeenCalled();
+	});
+
+	it('should update internal state', () => {
+		mainStore.dispatch(mainStoreSlice.actions.increment());
+		expect(mainStore.getState().count).toBe(1);
+	});
+
+	it('should dispatch patches to comms', () => {
+		mainStore.dispatch(mainStoreSlice.actions.increment());
+		expect(comms.submitPatches).toHaveBeenCalledWith([
+			{
+				op: 'replace',
+				path: ['count'],
+				value: 1
+			}
+		]);
+	});
 });
-
-// Create the main store
-export const mainStore = configureStore({
-    reducer: mainStoreSlice.reducer,
-    enhancers: d => d().concat(createMainStoreEnhancer())
-});
-
-
-describe("MainStore", () => {
-
-    beforeEach(() => {
-        vi.resetAllMocks();
-    })
-
-    it("should send patches to subscriebers", () => {
-        mainStore.dispatch(mainStoreSlice.actions.increment());
-        expect(mainStore.getState().count).toBe(1);
-        expect(mockPort.postMessage).toHaveBeenCalledWith({
-            patches: [
-                {
-                    op: "replace",
-                    path: [
-                        "count",
-                    ],
-                    value: 1,
-                },
-            ],
-            type: "PATCH_STATE",
-        },);
-    });
-
-    it("should send nested patches to subscriebers", () => {
-        mainStore.dispatch(mainStoreSlice.actions.crazy());
-
-        expect(mockPort.postMessage).toHaveBeenCalledWith({
-            patches: [
-                {
-                    op: "replace",
-                    path: [
-                        "neste",
-                        "some",
-                        "old",
-                    ],
-                    value: 0,
-                },
-            ],
-            type: "PATCH_STATE",
-        },);
-    });
-})

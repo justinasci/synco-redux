@@ -1,7 +1,7 @@
 import { Action } from '@reduxjs/toolkit';
 import { Patch } from './mainStore/patchGenerator';
 
-const SyncMessageActions = [
+export const SyncMessageActions = [
 	'PATCH_STATE',
 	'SYNC_GLOBAL',
 	'DISPATCH_ACTION'
@@ -24,7 +24,7 @@ export type SyncMessage =
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isSyncMessage = (message: any) => {
-	const type = message.type;
+	const type = message?.type;
 	if (type) {
 		return SyncMessageActions.includes(type);
 	}

@@ -27,7 +27,6 @@
     "lib"
   ],
   "exclude": [
-    "lib/__mocks__",
-    "lib/__tests__",
+
   ]
 }
