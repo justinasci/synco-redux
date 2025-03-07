@@ -6,7 +6,12 @@ export default defineConfig({
 	build: {
 		rollupOptions: {
 			external: (id) =>
-				['@reduxjs/toolkit', 'webextension-polyfill', 'immer'].includes(id),
+				[
+					'@reduxjs/toolkit',
+					'webextension-polyfill',
+					'immer',
+					'electron'
+				].includes(id),
 			output: {
 				globals: {
 					'@reduxjs/toolkit': 'RTK'

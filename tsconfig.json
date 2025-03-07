@@ -19,6 +19,6 @@
 		"noUncheckedSideEffectImports": true,
 		"declaration": true
 	},
-	"include": ["lib"],
+	"include": ["lib", "index.d.ts"],
 	"exclude": []
 }

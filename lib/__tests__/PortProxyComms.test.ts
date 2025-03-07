@@ -24,18 +24,18 @@ import {
 import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
 
 import Browser from 'webextension-polyfill';
-import { BrowserExtensionProxyComms } from '../adapters/PortProxyComms';
+import { PortProxyComms } from '../adapters/PortProxyComms';
 
 // Mock the store and actions
 const mockDispatch = vi.fn();
 const mockStore = { dispatch: mockDispatch } as unknown as Store;
 
 describe('BrowserExtensionProxyComms', () => {
-	let comms: BrowserExtensionProxyComms;
+	let comms: PortProxyComms;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		comms = new BrowserExtensionProxyComms();
+		comms = new PortProxyComms(Browser);
 	});
 
 	it('should connect to the browser extension runtime', () => {

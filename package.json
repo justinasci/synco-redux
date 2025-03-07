@@ -26,8 +26,10 @@
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx --ignore-pattern dist/"
 	},
 	"devDependencies": {
+		"@types/electron": "^1.4.38",
 		"@types/webextension-polyfill": "^0.12.3",
 		"@vitest/coverage-v8": "^3.0.7",
+		"electron": "^20.0.0",
 		"eslint": "^9.21.0",
 		"prettier": "^3.5.3",
 		"typescript": "~5.7.3",
@@ -35,11 +37,21 @@
 		"vite": "^6.1.1",
 		"vite-plugin-dts": "^4.5.3",
 		"vite-plugin-eslint": "^1.8.1",
-		"vitest": "^3.0.7"
+		"vitest": "^3.0.7",
+		"webextension-polyfill": "^0.12.0"
 	},
 	"peerDependencies": {
 		"@reduxjs/toolkit": "^2.6.0",
-		"immer": "^10.1.1",
-		"webextension-polyfill": "^0.12.0"
+		"electron": ">=20.0.0",
+		"immer": "^10.0.0",
+		"webextension-polyfill": ">=0.12.0"
+	},
+	"peerDependenciesMeta": {
+		"webextension-polyfill": {
+			"optional": true
+		},
+		"electron": {
+			"optional": true
+		}
 	}
 }
