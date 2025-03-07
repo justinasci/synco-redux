@@ -22,7 +22,8 @@
 		"dev": "vite",
 		"build": "tsc && vite build",
 		"test": "vitest",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"lint": "eslint . --ext .js,.ts,.jsx,.tsx --ignore-pattern dist/"
 	},
 	"devDependencies": {
 		"@types/webextension-polyfill": "^0.12.3",
