@@ -3,11 +3,19 @@ import { createProxyStoreEnhancer } from './proxyStore/proxyStore';
 import { isProxyReady } from './proxyStore/isProxyReady';
 import { isProxyStore } from './proxyStore/isProxyStore';
 import { immerProxyStoreReducer } from './proxyStore/proxyReducer';
+import { PortMainComms } from './adapters/PortMainComms';
+import { PortProxyComms } from './adapters/PortProxyComms';
+import { ElectronProxyComms } from './adapters/ElectronProxyComms';
+import { ElectronComms } from './adapters/ElectronMainComms';
 
 export {
 	createMainStoreEnhancer,
 	createProxyStoreEnhancer,
 	immerProxyStoreReducer,
 	isProxyReady,
-	isProxyStore
+	isProxyStore,
+	PortMainComms,
+	PortProxyComms,
+	ElectronProxyComms,
+	ElectronComms
 };

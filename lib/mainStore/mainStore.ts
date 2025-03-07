@@ -1,13 +1,8 @@
 import { StoreEnhancer } from '@reduxjs/toolkit';
-
 import { generatePatches, Patch } from './patchGenerator';
-
 import { IComms } from '../adapters/IComms';
-import { PortMainComms } from '../adapters/PortMainComms';
 
-export const createMainStoreEnhancer = (
-	comms: IComms = new PortMainComms()
-): StoreEnhancer => {
+export const createMainStoreEnhancer = (comms: IComms): StoreEnhancer => {
 	const enhancer: StoreEnhancer = (createStore) => (reducer, preloadstate) => {
 		const store = createStore(reducer, preloadstate);
 		const originalDispatch = store.dispatch;
