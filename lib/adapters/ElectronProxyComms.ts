@@ -1,7 +1,7 @@
 import { Store } from '@reduxjs/toolkit';
 import { type IProxyComms } from './IProxyComms';
-import { type IpcRenderer } from 'electron';
-import { SYNCO_PORT_ID } from '../constants';
+
+import { SYNCO_ELECTRON_API_KEY, SYNCO_PORT_ID } from '../constants';
 import {
 	isSyncMessage,
 	PATCH_STATE,
@@ -11,26 +11,24 @@ import {
 } from '../SyncMessage';
 import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
 
-export class ElectronProxyComms implements IProxyComms {
-	constructor(private ipcRenderer: IpcRenderer) {}
+const API = SYNCO_ELECTRON_API_KEY;
 
-	connect = () => {
-		console.log('Renderer: Connecting to main process');
-	};
+export class ElectronProxyComms implements IProxyComms {
+	connect = () => {};
 
 	init = (store: Store) => {
-		this.ipcRenderer.send(SYNCO_PORT_ID, syncMessage());
-
-		this.ipcRenderer.on(SYNCO_PORT_ID, (_event, message: SyncMessage) => {
+		window[API].onMessage(SYNCO_PORT_ID, (_event, message) => {
 			if (!isSyncMessage(message)) {
 				return;
 			}
 			this.handleMessage(store, message as SyncMessage);
 		});
+
+		window[API].sendMessage(SYNCO_PORT_ID, syncMessage());
 	};
 
 	postMessage = (message: unknown) => {
-		this.ipcRenderer.send(SYNCO_PORT_ID, message);
+		window[API].sendMessage(SYNCO_PORT_ID, message);
 	};
 
 	private handleMessage = (store: Store, message: SyncMessage) => {

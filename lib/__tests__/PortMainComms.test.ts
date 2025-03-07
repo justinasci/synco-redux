@@ -29,7 +29,7 @@ describe('BrowserExtensionMainComms', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		comms = new PortMainComms();
+		comms = new PortMainComms(Browser);
 	});
 
 	it('should listen for connections on init', () => {

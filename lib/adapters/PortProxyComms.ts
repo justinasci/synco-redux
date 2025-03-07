@@ -1,6 +1,6 @@
 import { Store } from '@reduxjs/toolkit';
 import { IProxyComms } from './IProxyComms';
-import Browser from 'webextension-polyfill';
+import type Browser from 'webextension-polyfill';
 import { SYNCO_PORT_ID } from '../constants';
 import {
 	isSyncMessage,
@@ -14,13 +14,15 @@ import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
 export class PortProxyComms implements IProxyComms {
 	port: Browser.Runtime.Port | undefined;
 
+	constructor(private browser: typeof Browser) {}
+
 	connect = () => {
-		this.port = Browser.runtime.connect({ name: SYNCO_PORT_ID });
+		this.port = this.browser.runtime.connect({ name: SYNCO_PORT_ID });
 	};
 
 	init = (store: Store) => {
 		if (!this.port) {
-			this.port = Browser.runtime.connect({ name: SYNCO_PORT_ID });
+			this.port = this.browser.runtime.connect({ name: SYNCO_PORT_ID });
 		}
 
 		this.port.onMessage.addListener((message) => {

@@ -7,6 +7,12 @@ import { PortMainComms } from './adapters/PortMainComms';
 import { PortProxyComms } from './adapters/PortProxyComms';
 import { ElectronProxyComms } from './adapters/ElectronProxyComms';
 import { ElectronComms } from './adapters/ElectronMainComms';
+import {
+	getSyncoReduxElectronApi,
+	registerSyncoReduxContextBridge
+} from './electronUtils';
+
+
 
 export {
 	createMainStoreEnhancer,
@@ -17,5 +23,7 @@ export {
 	PortMainComms,
 	PortProxyComms,
 	ElectronProxyComms,
-	ElectronComms
+	ElectronComms,
+	getSyncoReduxElectronApi,
+	registerSyncoReduxContextBridge
 };

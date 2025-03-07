@@ -35,7 +35,7 @@ describe('BrowserExtensionProxyComms', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		comms = new PortProxyComms();
+		comms = new PortProxyComms(Browser);
 	});
 
 	it('should connect to the browser extension runtime', () => {

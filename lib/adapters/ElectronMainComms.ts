@@ -14,13 +14,14 @@ import { Patch } from '../mainStore/patchGenerator';
 export class ElectronComms implements IComms {
 	constructor(
 		private ipcMain: Electron.IpcMain,
-		private ipcRenderer: Electron.IpcRenderer
+		private browserWindows: () => Electron.BrowserWindow[]
 	) {}
 	init = (store: Store) => {
 		this.ipcMain.on(SYNCO_PORT_ID, (event, message: SyncMessage) => {
 			if (!isSyncMessage(message)) {
 				return;
 			}
+
 			this.handleMainProcessMessage(event, store, message);
 		});
 	};
@@ -29,8 +30,10 @@ export class ElectronComms implements IComms {
 		if (patches.length === 0) {
 			return;
 		}
-
-		this.ipcRenderer.send(SYNCO_PORT_ID, patchMessage(patches));
+		const windows = this.browserWindows();
+		windows.forEach((window) => {
+			window.webContents.send(SYNCO_PORT_ID, patchMessage(patches));
+		});
 	};
 
 	private handleMainProcessMessage = (
@@ -43,7 +46,7 @@ export class ElectronComms implements IComms {
 		}
 
 		if (message.type === SYNC_GLOBAL) {
-			event.reply(syncMessage(store.getState()));
+			event.reply(SYNCO_PORT_ID, syncMessage(store.getState()));
 		}
 	};
 }
