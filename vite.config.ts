@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import dts from "vite-plugin-dts";
+import { defineConfig } from 'vite';
+import dts from 'vite-plugin-dts';
 import eslint from 'vite-plugin-eslint';
 
 export default defineConfig({
@@ -24,14 +24,15 @@ export default defineConfig({
 		coverage: {
 			provider: 'v8',
 			reporter: ['text'],
-			include: 'lib/**',
+			include: ['lib/**'],
 			exclude: ['lib/__mocks__/**']
 		}
 	},
 	plugins: [
 		dts({
 			tsconfigPath: './tsconfig.json', // Optional: if you want to specify a tsconfig file
-			insertTypesEntry: true // Add a reference to `types.d.ts` in the entry file
+			insertTypesEntry: true, // Add a reference to `types.d.ts` in the entry file
+			exclude: ['./lib/__tests__/**']
 		}),
 		eslint()
 	]
