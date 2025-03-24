@@ -12,8 +12,6 @@ import {
 	registerSyncoReduxContextBridge
 } from './electronUtils';
 
-
-
 export {
 	createMainStoreEnhancer,
 	createProxyStoreEnhancer,
