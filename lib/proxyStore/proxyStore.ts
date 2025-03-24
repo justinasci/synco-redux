@@ -4,7 +4,6 @@ import { SYNC_KEY } from '../constants';
 import { dispatchMesssage } from '../SyncMessage';
 import { APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION } from './proxyReducer';
 import { IProxyComms } from '../adapters/IProxyComms';
-import { BrowserExtensionProxyComms } from '../adapters/PortProxyComms';
 
 export interface ProxyState {
 	[SYNC_KEY]: boolean;
@@ -15,9 +14,7 @@ export const initialState: ProxyState = {
 	isStateSynced: false
 };
 
-export const createProxyStoreEnhancer = (
-	comms: IProxyComms = new BrowserExtensionProxyComms()
-): StoreEnhancer => {
+export const createProxyStoreEnhancer = (comms: IProxyComms): StoreEnhancer => {
 	comms.connect();
 
 	const enhancer: StoreEnhancer = (createStore) => (reducers, initalState) => {

@@ -1,6 +1,6 @@
 import { Store } from '@reduxjs/toolkit';
 import { IComms } from './IComms';
-import Browser from 'webextension-polyfill';
+import type Browser from 'webextension-polyfill';
 import { SYNCO_PORT_ID } from '../constants';
 import {
 	DISPATCH_ACTION,
@@ -15,8 +15,10 @@ import { Patch } from '../mainStore/patchGenerator';
 export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
 
+	constructor(private browser: typeof Browser) {}
+
 	init = (store: Store) => {
-		Browser.runtime.onConnect.addListener((port) => {
+		this.browser.runtime.onConnect.addListener((port) => {
 			if (port.name !== SYNCO_PORT_ID) {
 				return;
 			}
