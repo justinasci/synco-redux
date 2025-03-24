@@ -2,6 +2,18 @@
 # synco-redux [![NPM Version](https://badge.fury.io/js/synco-redux.svg?style=flat)](https://npmjs.org/package/synco-redux)
 A lightweight Redux enhancer for syncing state across different environments, including browser extensions and Electron applications.
 
+## Table of Contents
+- [How It Works](#how-it-works)
+- [Installation](#installation)
+- [Browser Extension](#browser-extension)
+  - [Main Store](#1-main-store)
+  - [Proxy Store](#2-proxy-store)
+- [Electron](#electron)
+  - [Main Store](#1-main-store-1)
+  - [Proxy Store](#2-proxy-store-1)
+  - [Preload](#3-preload)
+- [Helpers](#helpers)
+
 ## How It Works
 Synco-Redux follows a main-proxy store architecture:
 
@@ -123,7 +135,7 @@ registerSyncoReduxContextBridge(contextBridge, ipcRenderer);
 ```
 
 
-#### Helpers
+### Helpers
 `isProxyReady = (proxyStore: Store) => Promise<boolean>;` - Checks if a proxy store is synced with the main store and ready to dispatch events.
 
 ` isProxyStore = (store: Store) => Promise<boolean>;` - Determines if a given store is a proxy store or not.
