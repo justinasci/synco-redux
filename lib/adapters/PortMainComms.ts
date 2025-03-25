@@ -1,4 +1,4 @@
-import { Store } from '@reduxjs/toolkit';
+import { type Store } from '@reduxjs/toolkit';
 import { IComms } from './IComms';
 import type Browser from 'webextension-polyfill';
 import { SYNCO_PORT_ID } from '../constants';

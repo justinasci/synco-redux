@@ -1,4 +1,4 @@
-import { Store } from '@reduxjs/toolkit';
+import { type Store } from '@reduxjs/toolkit';
 
 export interface IProxyComms {
 	connect: () => void;

@@ -1,4 +1,4 @@
-import { StoreEnhancer } from '@reduxjs/toolkit';
+import { type StoreEnhancer } from '@reduxjs/toolkit';
 import { generatePatches, Patch } from './patchGenerator';
 import { IComms } from '../adapters/IComms';
 

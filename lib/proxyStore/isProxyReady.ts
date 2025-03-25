@@ -1,4 +1,4 @@
-import { Store } from '@reduxjs/toolkit';
+import { type Store } from '@reduxjs/toolkit';
 import { isProxyStore } from './isProxyStore';
 import { SYNC_KEY } from '../constants';
 

@@ -1,6 +1,6 @@
 {
 	"name": "synco-redux",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"description": "A lightweight Redux enhancer for syncing state across different environments, including browser extensions and Electron applications",
 	"type": "module",
 	"license": "MIT",
@@ -27,6 +27,7 @@
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx --ignore-pattern dist/"
 	},
 	"devDependencies": {
+		"@reduxjs/toolkit": "^2.6.0",
 		"@types/electron": "^1.4.38",
 		"@types/webextension-polyfill": "^0.12.3",
 		"@vitest/coverage-v8": "^3.0.7",
@@ -42,7 +43,6 @@
 		"webextension-polyfill": "^0.12.0"
 	},
 	"peerDependencies": {
-		"@reduxjs/toolkit": "^2.6.0",
 		"electron": ">=20.0.0",
 		"immer": "^10.0.0",
 		"webextension-polyfill": ">=0.12.0"
