@@ -1,5 +1,5 @@
-import { Action } from '@reduxjs/toolkit';
-import { Patch } from './mainStore/patchGenerator';
+import { type Action } from '@reduxjs/toolkit';
+import { type Patch } from './mainStore/patchGenerator';
 
 export const SyncMessageActions = [
 	'PATCH_STATE',
