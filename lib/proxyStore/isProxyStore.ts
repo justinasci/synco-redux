@@ -1,4 +1,4 @@
-import { Store } from '@reduxjs/toolkit';
+import { type Store } from '@reduxjs/toolkit';
 import { SYNC_KEY } from '../constants';
 
 export const isProxyStore = (store: Store) => {
