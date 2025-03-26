@@ -1,6 +1,6 @@
 {
 	"name": "synco-redux",
-	"version": "1.2.3",
+	"version": "1.2.4",
 	"description": "A lightweight Redux enhancer for syncing state across different environments, including browser extensions and Electron applications",
 	"type": "module",
 	"license": "MIT",
