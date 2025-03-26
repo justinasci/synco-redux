@@ -1,8 +1,8 @@
-import { type Store } from '@reduxjs/toolkit';
 import { isProxyStore } from './isProxyStore';
 import { SYNC_KEY } from '../constants';
+import { Store } from '@reduxjs/toolkit';
 
-export const isProxyReady = (proxyStore: Store) => {
+export const isProxyReady = <S extends Store>(proxyStore: S) => {
 	if (!isProxyStore(proxyStore)) {
 		return Promise.reject(new Error('Store is not a proxy'));
 	}
