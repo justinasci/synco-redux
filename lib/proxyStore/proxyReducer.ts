@@ -1,4 +1,5 @@
-import { Patch } from '../mainStore/patchGenerator';
+import { type UnknownAction } from '@reduxjs/toolkit';
+import { type Patch } from '../mainStore/patchGenerator';
 import { initialState, ProxyState } from './proxyStore';
 import { produce } from 'immer';
 
@@ -17,7 +18,7 @@ export const syncGlobal = (newState: { [key: string]: never }) => ({
 
 export const immerProxyStoreReducer = <T>(
 	state: T = initialState as T,
-	action: { type: string; payload: unknown }
+	action: UnknownAction
 ): T => {
 	return produce(state as T & ProxyState, (draft) => {
 		switch (action.type) {
