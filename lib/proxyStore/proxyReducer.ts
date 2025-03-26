@@ -27,7 +27,7 @@ export const immerProxyStoreReducer = <T>(
 	return produce(state as T & ProxyState, (draft) => {
 		switch (action.type) {
 			case APPLY_PATCH_ACTION: {
-				const patches = (action.payload || []) as Patch[];
+				const patches = action.payload as Patch[];
 
 				patches.forEach((patch) => {
 					const { op, path, value } = patch;
@@ -63,7 +63,7 @@ export const immerProxyStoreReducer = <T>(
 				break;
 			}
 			case SYNC_GLOBAL_ACTION:
-				Object.assign(draft, action.payload || {}, { isStateSynced: true });
+				Object.assign(draft, action.payload, { isStateSynced: true });
 				break;
 
 			default:
