@@ -24,6 +24,7 @@
 		"build": "tsc && vite build",
 		"test": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"bench": "vitest bench",
 		"lint": "eslint . --ext .js,.ts,.jsx,.tsx --ignore-pattern dist/"
 	},
 	"devDependencies": {
