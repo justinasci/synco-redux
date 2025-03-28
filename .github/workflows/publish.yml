@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: build
+        run: npm run build
+
       # Step 4: Get the version from the release tag and update package.json
       - name: Update package version from release
         run: |
