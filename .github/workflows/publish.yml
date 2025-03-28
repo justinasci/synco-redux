@@ -1,0 +1,39 @@
+name: Publish to npm on Release
+
+on:
+  release:
+    types:
+      - created # Trigger on a new release
+
+permissions:
+  contents: read  # Grants read-only access to the repository
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22' # Set the Node.js version you want to use
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Get the version from the release tag and update package.json
+      - name: Update package version from release
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}  # Extract version from release tag (e.g., v1.0.0)
+          npm version $VERSION --no-git-tag-version  # Update version without creating a new commit
+
+      # Step 5: Publish to npm
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # Use the NPM_TOKEN from GitHub Secrets
