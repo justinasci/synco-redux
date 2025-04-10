@@ -22,6 +22,10 @@ describe('proxyStore', () => {
 		});
 	});
 
+	it('should have synced false on init', () => {
+		expect(proxyStore.getState()[SYNC_KEY]).toBe(false);
+	});
+
 	it('should connect to comms', () => {
 		expect(comms.connect).toHaveBeenCalled();
 	});

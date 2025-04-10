@@ -2,6 +2,7 @@ import { Action } from '@reduxjs/toolkit';
 import { type Patch } from '../mainStore/patchGenerator';
 import { initialState, ProxyState } from './proxyStore';
 import { produce } from 'immer';
+import { SYNC_KEY } from '../constants';
 
 export const APPLY_PATCH_ACTION = 'proxyStore/applyPatch' as const;
 export const SYNC_GLOBAL_ACTION = 'proxyStore/syncGlobal' as const;
@@ -63,7 +64,7 @@ export const immerProxyStoreReducer = <T>(
 				break;
 			}
 			case SYNC_GLOBAL_ACTION:
-				Object.assign(draft, action.payload, { isStateSynced: true });
+				Object.assign(draft, action.payload, { [SYNC_KEY]: true });
 				break;
 
 			default:
