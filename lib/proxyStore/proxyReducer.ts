@@ -16,6 +16,58 @@ export const syncGlobal = (newState: { [key: string]: never }) => ({
 	payload: newState
 });
 
+
+
+export const proxyReducer = <T extends object>(
+	draft: T,
+	action: Action & Record<'payload', unknown>
+) => {
+	switch (action.type) {
+		case APPLY_PATCH_ACTION: {
+			const patches = action.payload as Patch[];
+
+			patches.forEach((patch) => {
+				const { op, path, value } = patch;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				let target: any = draft;
+
+				// Traverse the path except for the last key
+				for (let i = 0; i < path.length - 1; i++) {
+					target = target[path[i] as keyof typeof target];
+				}
+
+				const lastKey = path[path.length - 1] as keyof typeof target;
+
+				switch (op) {
+					case 'replace':
+					case 'add':
+						target[lastKey] = value;
+						break;
+
+					case 'remove':
+						if (Array.isArray(target)) {
+							target.splice(Number(lastKey), 1); // Handle arrays
+						} else {
+							delete target[lastKey];
+						}
+						break;
+
+					default:
+						break;
+				}
+			});
+
+			break;
+		}
+		case SYNC_GLOBAL_ACTION:
+			Object.assign(draft, action.payload, { isStateSynced: true });
+			break;
+
+		default:
+			break;
+	}
+};
+
 export const immerProxyStoreReducer = <T>(
 	state: T = initialState as T,
 	action: Action
@@ -24,50 +76,7 @@ export const immerProxyStoreReducer = <T>(
 		return state;
 	}
 
-	return produce(state as T & ProxyState, (draft) => {
-		switch (action.type) {
-			case APPLY_PATCH_ACTION: {
-				const patches = action.payload as Patch[];
-
-				patches.forEach((patch) => {
-					const { op, path, value } = patch;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					let target: any = draft;
-
-					// Traverse the path except for the last key
-					for (let i = 0; i < path.length - 1; i++) {
-						target = target[path[i] as keyof typeof target];
-					}
-
-					const lastKey = path[path.length - 1] as keyof typeof target;
-
-					switch (op) {
-						case 'replace':
-						case 'add':
-							target[lastKey] = value;
-							break;
-
-						case 'remove':
-							if (Array.isArray(target)) {
-								target.splice(Number(lastKey), 1); // Handle arrays
-							} else {
-								delete target[lastKey];
-							}
-							break;
-
-						default:
-							break;
-					}
-				});
-
-				break;
-			}
-			case SYNC_GLOBAL_ACTION:
-				Object.assign(draft, action.payload, { isStateSynced: true });
-				break;
-
-			default:
-				break;
-		}
-	});
+	return produce(state as T & ProxyState, (draft) =>
+		proxyReducer(draft, action)
+	);
 };
