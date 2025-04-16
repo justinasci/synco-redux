@@ -45,7 +45,7 @@
 	"peerDependencies": {
 		"electron": ">=20.0.0",
 		"immer": ">=10.0.0",
-		"webextension-polyfill": ">=0.12.0"
+		"webextension-polyfill": ">=0.10.0"
 	},
 	"peerDependenciesMeta": {
 		"webextension-polyfill": {
