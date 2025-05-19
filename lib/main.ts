@@ -1,6 +1,6 @@
 import { createMainStoreEnhancer } from './mainStore/mainStore';
 import { createProxyStoreEnhancer } from './proxyStore/proxyStore';
-import { isProxyReady } from './proxyStore/isProxyReady';
+import { isProxyReady, isProxyReadySync } from './proxyStore/isProxyReady';
 import { isProxyStore } from './proxyStore/isProxyStore';
 import { immerProxyStoreReducer } from './proxyStore/proxyReducer';
 import { PortMainComms } from './adapters/PortMainComms';
@@ -11,12 +11,14 @@ import {
 	getSyncoReduxElectronApi,
 	registerSyncoReduxContextBridge
 } from './electronUtils';
+import type { ILogger } from './ILogger';
 
 export {
 	createMainStoreEnhancer,
 	createProxyStoreEnhancer,
 	immerProxyStoreReducer,
 	isProxyReady,
+	isProxyReadySync,
 	isProxyStore,
 	PortMainComms,
 	PortProxyComms,
@@ -25,3 +27,6 @@ export {
 	getSyncoReduxElectronApi,
 	registerSyncoReduxContextBridge
 };
+
+// Re-export types
+export type { ILogger };

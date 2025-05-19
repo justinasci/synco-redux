@@ -39,6 +39,15 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should connect to the browser extension runtime', () => {
+		const mockPort = {
+			onMessage: { addListener: vi.fn() },
+			postMessage: vi.fn(),
+			onDisconnect: { addListener: vi.fn() }
+		};
+
+		//@ts-expect-error mock
+		Browser.runtime.connect.mockReturnValue(mockPort);
+
 		comms.connect();
 		expect(Browser.runtime.connect).toHaveBeenCalledWith({
 			name: SYNCO_PORT_ID
@@ -50,7 +59,8 @@ describe('BrowserExtensionProxyComms', () => {
 	it('should initialize and set up message listener', () => {
 		const mockPort = {
 			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn()
+			postMessage: vi.fn(),
+			onDisconnect: { addListener: vi.fn() }
 		};
 
 		//@ts-expect-error mock
