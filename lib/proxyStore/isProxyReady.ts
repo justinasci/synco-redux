@@ -7,20 +7,24 @@ export const isProxyReady = <S extends Store>(proxyStore: S) => {
 		return Promise.reject(new Error('Store is not a proxy'));
 	}
 
-	const isSynced = () => {
-		return proxyStore.getState()[SYNC_KEY];
-	};
-
-	if (isSynced()) {
+	if (isProxyReadySync(proxyStore)) {
 		return Promise.resolve(true);
 	}
 
 	return new Promise<boolean>((resolve) => {
 		const unsubscribe = proxyStore.subscribe(() => {
-			if (isSynced()) {
+			if (isProxyReadySync(proxyStore)) {
 				unsubscribe();
 				resolve(true);
 			}
 		});
 	});
+};
+
+export const isProxyReadySync = <S extends Store>(proxyStore: S) => {
+	if (!isProxyStore(proxyStore)) {
+		return false;
+	}
+
+	return proxyStore.getState()[SYNC_KEY];
 };

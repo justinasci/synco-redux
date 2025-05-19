@@ -11,11 +11,18 @@ import {
 	SyncMessage
 } from '../SyncMessage';
 import { Patch } from '../mainStore/patchGenerator';
+import { ILogger } from '../ILogger';
 
 export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
+	logger?: ILogger;
 
-	constructor(private browser: typeof Browser) {}
+	constructor(
+		private browser: typeof Browser,
+		logger?: ILogger
+	) {
+		this.logger = logger;
+	}
 
 	init = (store: Store) => {
 		this.browser.runtime.onConnect.addListener((port) => {
@@ -23,9 +30,13 @@ export class PortMainComms implements IComms {
 				return;
 			}
 
+			this.logger?.log('Connected to port: ', port.name);
+
 			this.openPorts.push(port);
 
 			port.onDisconnect.addListener(() => {
+				this.logger?.log(port.name, 'Disconnected');
+
 				this.openPorts = this.openPorts.filter((p) => p !== port);
 			});
 
@@ -62,6 +73,7 @@ export class PortMainComms implements IComms {
 		}
 
 		if (message.type === SYNC_GLOBAL) {
+			this.logger?.log(port.name, 'Syncing global state');
 			port.postMessage(syncMessage(store.getState()));
 		}
 	};
