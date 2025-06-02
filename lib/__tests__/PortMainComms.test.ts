@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 
 import { Patch } from '../mainStore/patchGenerator';
-import { DISPATCH_ACTION, PATCH_STATE, SYNC_GLOBAL } from '../SyncMessage';
+import { DISPATCH_ACTION, PATCH_STATE, SYNC_GLOBAL } from '../syncMessage';
 import { SYNCO_PORT_ID } from '../constants';
 
 vi.mock('webextension-polyfill', () => {
@@ -19,7 +19,7 @@ vi.mock('webextension-polyfill', () => {
 });
 
 import Browser from 'webextension-polyfill';
-import { PortMainComms } from '../adapters/PortMainComms';
+import { PortMainComms } from '../adapters/extension/PortMainComms';
 
 // Mock store
 const mockStore = configureStore({ reducer: () => {} });

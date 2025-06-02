@@ -2,6 +2,7 @@ import { type StoreEnhancer } from '@reduxjs/toolkit';
 import { generatePatches, Patch } from './patchGenerator';
 import { IComms } from '../adapters/IComms';
 
+
 export const createMainStoreEnhancer = (comms: IComms): StoreEnhancer => {
 	const enhancer: StoreEnhancer = (createStore) => (reducer, preloadstate) => {
 		const store = createStore(reducer, preloadstate);

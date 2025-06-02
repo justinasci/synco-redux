@@ -3,19 +3,19 @@ import { isProxyReady } from '../main';
 import { SYNC_KEY } from '../constants';
 import { configureStore } from '@reduxjs/toolkit';
 
+const getStore = (preloadedState = {}) =>
+	configureStore({
+		reducer: (state, action) => {
+			if (action.type === 'update') {
+				return action.payload;
+			}
+
+			return state;
+		},
+		preloadedState
+	});
+
 describe('isProxyReady', () => {
-	const getStore = (preloadedState = {}) =>
-		configureStore({
-			reducer: (state, action) => {
-				if (action.type === 'update') {
-					return action.payload;
-				}
-
-				return state;
-			},
-			preloadedState
-		});
-
 	it('should throw error if store is not a proxy store', async () => {
 		await expect(isProxyReady(getStore())).rejects.toThrow(
 			'Store is not a proxy'
@@ -35,3 +35,4 @@ describe('isProxyReady', () => {
 		expect(await promise).toBe(true);
 	});
 });
+

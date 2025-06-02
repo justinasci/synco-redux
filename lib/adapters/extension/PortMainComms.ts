@@ -1,7 +1,7 @@
 import { type Store } from '@reduxjs/toolkit';
-import { IComms } from './IComms';
+import { IComms } from '../IComms';
 import type Browser from 'webextension-polyfill';
-import { SYNCO_PORT_ID } from '../constants';
+import { SYNCO_PORT_ID } from '../../constants';
 import {
 	DISPATCH_ACTION,
 	isSyncMessage,
@@ -9,34 +9,22 @@ import {
 	SYNC_GLOBAL,
 	syncMessage,
 	SyncMessage
-} from '../SyncMessage';
-import { Patch } from '../mainStore/patchGenerator';
-import { ILogger } from '../ILogger';
+} from '../../syncMessage';
+import { Patch } from '../../mainStore/patchGenerator';
 
 export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
-	logger?: ILogger;
 
-	constructor(
-		private browser: typeof Browser,
-		logger?: ILogger
-	) {
-		this.logger = logger;
-	}
+	constructor(private browser: typeof Browser) {}
 
 	init = (store: Store) => {
 		this.browser.runtime.onConnect.addListener((port) => {
 			if (port.name !== SYNCO_PORT_ID) {
 				return;
 			}
-
-			this.logger?.log('Connected to port: ', port.name);
-
 			this.openPorts.push(port);
 
 			port.onDisconnect.addListener(() => {
-				this.logger?.log(port.name, 'Disconnected');
-
 				this.openPorts = this.openPorts.filter((p) => p !== port);
 			});
 
@@ -73,7 +61,6 @@ export class PortMainComms implements IComms {
 		}
 
 		if (message.type === SYNC_GLOBAL) {
-			this.logger?.log(port.name, 'Syncing global state');
 			port.postMessage(syncMessage(store.getState()));
 		}
 	};

@@ -1,15 +1,15 @@
 import { type Store } from '@reduxjs/toolkit';
-import { type IProxyComms } from './IProxyComms';
+import { type IProxyComms } from '../IProxyComms';
 
-import { SYNCO_ELECTRON_API_KEY, SYNCO_PORT_ID } from '../constants';
+import { SYNCO_ELECTRON_API_KEY, SYNCO_PORT_ID } from '../../constants';
 import {
 	isSyncMessage,
 	PATCH_STATE,
 	SYNC_GLOBAL,
 	SyncMessage,
 	syncMessage
-} from '../SyncMessage';
-import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
+} from '../../syncMessage';
+import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
 
 const API = SYNCO_ELECTRON_API_KEY;
 

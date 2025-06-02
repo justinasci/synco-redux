@@ -1,27 +1,23 @@
 import { type Store } from '@reduxjs/toolkit';
-import { IProxyComms } from './IProxyComms';
+import { IProxyComms } from '../IProxyComms';
 import type Browser from 'webextension-polyfill';
-import { SYNCO_PORT_ID } from '../constants';
+import { SYNCO_PORT_ID } from '../../constants';
 import {
 	isSyncMessage,
 	PATCH_STATE,
 	SYNC_GLOBAL,
 	SyncMessage,
 	syncMessage
-} from '../SyncMessage';
-import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
-import { ILogger } from '../ILogger';
-import { isProxyReadySync } from '../proxyStore/isProxyReady';
-import { IntervalTimer } from '../utils/IntervalTimer';
+} from '../../syncMessage';
+import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
+import { isProxyReadySync } from '../../proxyStore/isProxyReadySync';
+import { IntervalTimer } from '../../utils/IntervalTimer';
 
 export class PortProxyComms implements IProxyComms {
 	port: Browser.Runtime.Port | undefined;
 	syncIntervalTimer: IntervalTimer | undefined;
 
-	constructor(
-		private browser: typeof Browser,
-		private logger?: ILogger
-	) {}
+	constructor(private browser: typeof Browser) {}
 
 	private openPort = () => {
 		return this.browser.runtime.connect({ name: SYNCO_PORT_ID });
@@ -30,7 +26,6 @@ export class PortProxyComms implements IProxyComms {
 	connect = () => {
 		if (this.port) {
 			if (this.port.error) {
-				this.logger?.error('Port error: ', this.port.error);
 				this.port.disconnect();
 			} else {
 				return;
@@ -40,14 +35,10 @@ export class PortProxyComms implements IProxyComms {
 		this.port = this.openPort();
 
 		if (!this.port) {
-			this.logger?.error('Failed to connect to port');
 			return;
 		}
 
-		this.logger?.log('Connected to port: ', this.port.name);
-
 		this.port.onDisconnect.addListener(() => {
-			this.logger?.log('Disconnected from port: ', this.port?.name);
 			this.port?.disconnect();
 			this.port = undefined;
 		});
@@ -59,7 +50,6 @@ export class PortProxyComms implements IProxyComms {
 		}
 
 		if (!this.port) {
-			this.logger?.error('Failed to initialize port proxy comms');
 			return;
 		}
 
@@ -71,17 +61,13 @@ export class PortProxyComms implements IProxyComms {
 			this.handleMessage(store, message as SyncMessage);
 		});
 
-		this.logger?.log('Posting message: Sync global state');
 		this.postMessage(syncMessage());
 
 		this.syncIntervalTimer = new IntervalTimer(() => {
 			if (isProxyReadySync(store)) {
-				this.logger?.log('Proxy synced with retry');
 				this.syncIntervalTimer?.stop();
 				return;
 			}
-
-			this.logger?.log('Retrying Posting message: Sync global state');
 			this.postMessage(syncMessage());
 		}, 500);
 	};
@@ -97,7 +83,6 @@ export class PortProxyComms implements IProxyComms {
 		if (message.type === PATCH_STATE) {
 			store.dispatch(applyPatch(message.patches));
 		} else if (message.type === SYNC_GLOBAL) {
-			this.logger?.log('Received message: Sync global state');
 			store.dispatch(syncGlobal(message.state as never));
 		}
 	};
