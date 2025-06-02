@@ -18,7 +18,7 @@ A lightweight Redux enhancer for syncing state across different environments, in
 Synco-Redux follows a main-proxy store architecture:
 
 - **Main Store**: Acts as the single source of truth. It processes all dispatched actions and broadcasts state updates to all connected proxy stores.
-- **Proxy Stores**: Do not process actions themselves. Instead, they forward actions to the main store and later update their internal state based on the changes broadcasted from the main store.
+- **Proxy Stores**: Do not process actions themselves. Instead, they forward actions to the main store and later update their internal state based on the changes broadcast from the main store.
 
 This setup ensures a consistent state across different processes.
 
@@ -137,6 +137,7 @@ registerSyncoReduxContextBridge(contextBridge, ipcRenderer);
 
 ### Helpers
 `isProxyReady = (proxyStore: Store) => Promise<boolean>;` - Checks if a proxy store is synced with the main store and ready to dispatch events.
+
 `isProxyReadySync = (proxyStore: Store) => boolean;` - Checks if a proxy store is synced with the main store and ready to dispatch events.
+
 `isProxyStore = (store: Store) => Promise<boolean>;` - Determines if a given store is a proxy store or not.
-``
