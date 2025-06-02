@@ -6,6 +6,7 @@ export const SyncMessageActions = [
 	'SYNC_GLOBAL',
 	'DISPATCH_ACTION'
 ] as const;
+
 export const [PATCH_STATE, SYNC_GLOBAL, DISPATCH_ACTION] = SyncMessageActions;
 
 export type SyncMessage =

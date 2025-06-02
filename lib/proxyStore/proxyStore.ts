@@ -1,7 +1,7 @@
 import { type StoreEnhancer } from '@reduxjs/toolkit';
 
 import { SYNC_KEY } from '../constants';
-import { dispatchMesssage } from '../SyncMessage';
+import { dispatchMesssage } from '../syncMessage';
 import { APPLY_PATCH_ACTION, SYNC_GLOBAL_ACTION } from './proxyReducer';
 import { IProxyComms } from '../adapters/IProxyComms';
 

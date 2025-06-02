@@ -137,5 +137,6 @@ registerSyncoReduxContextBridge(contextBridge, ipcRenderer);
 
 ### Helpers
 `isProxyReady = (proxyStore: Store) => Promise<boolean>;` - Checks if a proxy store is synced with the main store and ready to dispatch events.
-
-` isProxyStore = (store: Store) => Promise<boolean>;` - Determines if a given store is a proxy store or not.
+`isProxyReadySync = (proxyStore: Store) => boolean;` - Checks if a proxy store is synced with the main store and ready to dispatch events.
+`isProxyStore = (store: Store) => Promise<boolean>;` - Determines if a given store is a proxy store or not.
+``

@@ -1,7 +1,7 @@
 import { type Store } from '@reduxjs/toolkit';
-import { IComms } from './IComms';
+import { IComms } from '../IComms';
 import type Browser from 'webextension-polyfill';
-import { SYNCO_PORT_ID } from '../constants';
+import { SYNCO_PORT_ID } from '../../constants';
 import {
 	DISPATCH_ACTION,
 	isSyncMessage,
@@ -9,8 +9,8 @@ import {
 	SYNC_GLOBAL,
 	syncMessage,
 	SyncMessage
-} from '../SyncMessage';
-import { Patch } from '../mainStore/patchGenerator';
+} from '../../syncMessage';
+import { Patch } from '../../mainStore/patchGenerator';
 
 export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
@@ -22,7 +22,6 @@ export class PortMainComms implements IComms {
 			if (port.name !== SYNCO_PORT_ID) {
 				return;
 			}
-
 			this.openPorts.push(port);
 
 			port.onDisconnect.addListener(() => {

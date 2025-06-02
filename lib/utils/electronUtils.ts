@@ -1,5 +1,5 @@
 import { type ContextBridge, type IpcRenderer } from 'electron';
-import { SYNCO_ELECTRON_API_KEY } from './constants';
+import { SYNCO_ELECTRON_API_KEY } from '../constants';
 
 export const getSyncoReduxElectronApi = (ipcRenderer: IpcRenderer) => ({
 	sendMessage: (channel: string, data: unknown) =>

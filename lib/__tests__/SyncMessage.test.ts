@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSyncMessage, SyncMessageActions } from '../SyncMessage';
+import { isSyncMessage, SyncMessageActions } from '../syncMessage';
 
 describe('isSyncMessage', () => {
 	it.each(SyncMessageActions)('with type %s to be true', (args) => {

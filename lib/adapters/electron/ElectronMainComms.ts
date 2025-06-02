@@ -1,6 +1,6 @@
 import { type Store } from '@reduxjs/toolkit';
-import { IComms } from './IComms';
-import { SYNCO_PORT_ID } from '../constants';
+import { IComms } from '../IComms';
+import { SYNCO_PORT_ID } from '../../constants';
 import {
 	DISPATCH_ACTION,
 	isSyncMessage,
@@ -8,8 +8,8 @@ import {
 	SYNC_GLOBAL,
 	syncMessage,
 	SyncMessage
-} from '../SyncMessage';
-import { Patch } from '../mainStore/patchGenerator';
+} from '../../syncMessage';
+import { Patch } from '../../mainStore/patchGenerator';
 
 export class ElectronComms implements IComms {
 	constructor(
