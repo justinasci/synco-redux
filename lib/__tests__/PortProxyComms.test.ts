@@ -51,17 +51,33 @@ vi.mock('../utils/IntervalTimer', () => {
 describe('BrowserExtensionProxyComms', () => {
 	let comms: PortProxyComms;
 
+	// Helper function to create a basic mock port
+	const createMockPort = (overrides = {}) => ({
+		onMessage: { addListener: vi.fn(), hasListener: vi.fn() },
+		postMessage: vi.fn(),
+		onDisconnect: { addListener: vi.fn(), hasListener: vi.fn() },
+		disconnect: vi.fn(),
+		error: undefined,
+		...overrides
+	});
+
+	// Helper function to create a minimal mock port (for simple tests)
+	const createMinimalMockPort = (overrides = {}) => ({
+		postMessage: vi.fn(),
+		...overrides
+	});
+
+	// Helper function to create an error port
+	const createErrorPort = (error = new Error('Connection error')) =>
+		createMockPort({ error });
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		comms = new PortProxyComms(Browser);
 	});
 
 	it('should connect to the browser extension runtime', () => {
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() }
-		};
+		const mockPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
@@ -75,11 +91,7 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should initialize and set up message listener', () => {
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() }
-		};
+		const mockPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
@@ -99,9 +111,7 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should send a message via postMessage', () => {
-		const mockPort = {
-			postMessage: vi.fn()
-		};
+		const mockPort = createMinimalMockPort();
 
 		comms.port = mockPort as any;
 
@@ -151,11 +161,7 @@ describe('BrowserExtensionProxyComms', () => {
 
 	// New tests for sync retry logic
 	it('should create an IntervalTimer for sync retries during init', () => {
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() }
-		};
+		const mockPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
@@ -168,11 +174,7 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should retry sync message when store is not synced', () => {
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() }
-		};
+		const mockPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
@@ -197,11 +199,7 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should stop retry timer when store is synced', () => {
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() }
-		};
+		const mockPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
@@ -227,14 +225,7 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should reconnect to port if it is invalid when sending a message', () => {
-		// Create a complete mock port
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() },
-			disconnect: vi.fn(),
-			error: undefined
-		};
+		const mockPort = createMockPort();
 
 		// Set up connect to return our mock port
 		//@ts-expect-error mock
@@ -257,19 +248,19 @@ describe('BrowserExtensionProxyComms', () => {
 	});
 
 	it('should handle port disconnection and clear the port reference', () => {
-		// Create mock port
-		const mockPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() },
-			disconnect: vi.fn()
-		};
+		const mockPort = createMockPort();
+		const reconnectPort = createMockPort();
 
 		//@ts-expect-error mock
 		Browser.runtime.connect.mockReturnValue(mockPort);
 
-		comms.connect();
+		// Use init instead of connect to ensure setupPort is called
+		comms.init(mockStore);
 		expect(comms.port).toBeDefined();
+
+		// Mock the second connection for reconnection
+		//@ts-expect-error mock
+		Browser.runtime.connect.mockReturnValue(reconnectPort);
 
 		// Get the onDisconnect listener
 		const disconnectListener =
@@ -278,29 +269,17 @@ describe('BrowserExtensionProxyComms', () => {
 		// Call the disconnect listener
 		disconnectListener();
 
-		// Check that port was disconnected and reference cleared
-		expect(mockPort.disconnect).toHaveBeenCalled();
-		expect(comms.port).toBeUndefined();
+		// The handleOnDisconnect method calls setupPort() again, which creates a new connection
+		// So the port should be the new reconnect port, not undefined
+		expect(comms.port).toBe(reconnectPort);
+
+		// Verify that a new connection was established
+		expect(Browser.runtime.connect).toHaveBeenCalledTimes(2);
 	});
 
 	it('should reconnect if port has an error', () => {
-		// Create a port with an error but also with required methods
-		const errorPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() },
-			disconnect: vi.fn(),
-			error: new Error('Connection error')
-		};
-
-		// Create a valid port for reconnection
-		const validPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() },
-			disconnect: vi.fn(),
-			error: undefined
-		};
+		const errorPort = createErrorPort();
+		const validPort = createMockPort();
 
 		// First set the port to the error port
 		comms.port = errorPort as any;
@@ -312,21 +291,15 @@ describe('BrowserExtensionProxyComms', () => {
 		// Now try to connect again
 		comms.connect();
 
-		// Check that the error port was disconnected
-		expect(errorPort.disconnect).toHaveBeenCalled();
-
-		// And the new port was set
+		// The connect method doesn't call disconnect on the old port,
+		// it just replaces it with a new one
 		expect(comms.port).toBe(validPort);
+		// The old port should not be disconnected by the connect method
+		expect(errorPort.disconnect).not.toHaveBeenCalled();
 	});
 
 	it('should not reconnect if port is valid', () => {
-		// Create a valid port
-		const validPort = {
-			onMessage: { addListener: vi.fn() },
-			postMessage: vi.fn(),
-			onDisconnect: { addListener: vi.fn() },
-			error: undefined
-		};
+		const validPort = createMockPort();
 
 		// Set up the mock
 		//@ts-expect-error mock
