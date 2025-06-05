@@ -16,6 +16,7 @@ import { IntervalTimer } from '../../utils/IntervalTimer';
 export class PortProxyComms implements IProxyComms {
 	port: Browser.Runtime.Port | undefined;
 	syncIntervalTimer: IntervalTimer | undefined;
+	store: Store | undefined;
 
 	constructor(private browser: typeof Browser) {}
 
@@ -25,56 +26,23 @@ export class PortProxyComms implements IProxyComms {
 
 	connect = () => {
 		if (this.port) {
-			if (this.port.error) {
-				this.port.disconnect();
-			} else {
-				return;
+			if (!this.port.error) {
+				return this.port;
 			}
 		}
-
 		this.port = this.openPort();
 
-		if (!this.port) {
-			return;
-		}
-
-		this.port.onDisconnect.addListener(() => {
-			this.port?.disconnect();
-			this.port = undefined;
-		});
+		return this.port;
 	};
 
 	init = (store: Store) => {
-		if (!this.port) {
-			this.connect();
-		}
-
-		if (!this.port) {
-			return;
-		}
-
-		this.port.onMessage.addListener((message) => {
-			if (!isSyncMessage(message)) {
-				return;
-			}
-
-			this.handleMessage(store, message as SyncMessage);
-		});
-
-		this.postMessage(syncMessage());
-
-		this.syncIntervalTimer = new IntervalTimer(() => {
-			if (isProxyReadySync(store)) {
-				this.syncIntervalTimer?.stop();
-				return;
-			}
-			this.postMessage(syncMessage());
-		}, 500);
+		this.store = store;
+		this.setupPort();
 	};
 
 	postMessage = (message: unknown) => {
 		if (!this.getIsPortValid()) {
-			this.connect();
+			this.setupPort();
 		}
 		this.port?.postMessage(message);
 	};
@@ -89,5 +57,52 @@ export class PortProxyComms implements IProxyComms {
 
 	private getIsPortValid = () => {
 		return this.port && !this.port.error;
+	};
+
+	private handleOnMessage = (message: unknown) => {
+		if (!isSyncMessage(message)) {
+			return;
+		}
+
+		this.handleMessage(this.store!, message as SyncMessage);
+	};
+
+	private handleOnDisconnect = () => {
+		console.log(
+			`[SyncoRedux] Disconnected due to an error: ${this.port?.error?.message}`
+		);
+		this.port = undefined;
+		if (this.store) {
+			this.setupPort();
+		}
+	};
+
+	private handleSyncRetry = () => {
+		if (isProxyReadySync(this.store!)) {
+			this.syncIntervalTimer?.stop();
+			return;
+		}
+
+		console.warn('[SyncoRedux] Failed to sync with main, retrying...');
+		this.postMessage(syncMessage());
+	};
+
+	private setupPort = () => {
+		const port = this.connect();
+
+		if (!port.onMessage.hasListener(this.handleOnMessage)) {
+			port.onMessage.addListener(this.handleOnMessage);
+		}
+
+		if (!port.onDisconnect.hasListener(this.handleOnDisconnect)) {
+			port.onDisconnect.addListener(this.handleOnDisconnect);
+		}
+
+		if (this.syncIntervalTimer) {
+			this.syncIntervalTimer.stop();
+		}
+
+		this.postMessage(syncMessage());
+		this.syncIntervalTimer = new IntervalTimer(this.handleSyncRetry, 500);
 	};
 }
