@@ -13,12 +13,49 @@ import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
 import { isProxyReadySync } from '../../proxyStore/isProxyReadySync';
 import { IntervalTimer } from '../../utils/IntervalTimer';
 
+const HEARTBEAT_ALARM_NAME = 'synco-redux-heartbeat';
+
+interface IOptions {
+	resyncOnFocus: boolean;
+	heartbeatPeriod: number;
+	heartbeatResyncThreshold: number;
+}
+
+const DEFAULT_OPTIONS: IOptions = {
+	resyncOnFocus: true,
+	heartbeatPeriod: 1,
+	heartbeatResyncThreshold: 5000
+};
+
 export class PortProxyComms implements IProxyComms {
 	port: Browser.Runtime.Port | undefined;
 	syncIntervalTimer: IntervalTimer | undefined;
 	store: Store | undefined;
 
-	constructor(private browser: typeof Browser) {}
+	lastUpdate: number | null = null;
+	options: IOptions;
+
+	constructor(
+		private browser: typeof Browser,
+		options: Partial<IOptions> = {}
+	) {
+		this.options = { ...DEFAULT_OPTIONS, ...options };
+
+		this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
+			periodInMinutes: this.options.heartbeatPeriod
+		});
+
+		this.browser.alarms.onAlarm.addListener(this.handleAlarm);
+
+		if (this.options.resyncOnFocus && document) {
+			document.addEventListener('visibilitychange', () => {
+				if (document.visibilityState === 'visible') {
+					console.log('[SyncoRedux] tab is now focused');
+					this.handleHeartbeat();
+				}
+			});
+		}
+	}
 
 	private openPort = () => {
 		return this.browser.runtime.connect({ name: SYNCO_PORT_ID });
@@ -31,6 +68,8 @@ export class PortProxyComms implements IProxyComms {
 			}
 		}
 		this.port = this.openPort();
+
+		this.lastUpdate = null;
 
 		return this.port;
 	};
@@ -60,9 +99,13 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnMessage = (message: unknown) => {
+		console.log('[SyncoRedux] received message', message);
+
 		if (!isSyncMessage(message)) {
 			return;
 		}
+
+		this.lastUpdate = Date.now();
 
 		this.handleMessage(this.store!, message as SyncMessage);
 	};
@@ -105,4 +148,33 @@ export class PortProxyComms implements IProxyComms {
 		this.postMessage(syncMessage());
 		this.syncIntervalTimer = new IntervalTimer(this.handleSyncRetry, 500);
 	};
+
+	private handleAlarm = (alarm: Browser.Alarms.Alarm) => {
+		if (alarm.name !== HEARTBEAT_ALARM_NAME) {
+			return;
+		}
+
+		console.log('[SyncoRedux] heartbeat alarm');
+		this.handleHeartbeat();
+	};
+
+	private handleHeartbeat = () => {
+		if (!this.lastUpdate) {
+			return;
+		}
+
+		const nextUpdateThreshold =
+			this.lastUpdate + this.options.heartbeatResyncThreshold;
+
+		console.log('[SyncoRedux] heartbeat resync threshold', nextUpdateThreshold);
+
+		if (nextUpdateThreshold > Date.now()) {
+			return;
+		}
+
+		this.lastUpdate = Date.now();
+		console.log('[SyncoRedux] heartbeat resync');
+		this.postMessage(syncMessage());
+	};
 }
+
