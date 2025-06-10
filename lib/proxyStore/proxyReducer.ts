@@ -12,7 +12,7 @@ export const applyPatch = (patches: Patch[]) => ({
 	payload: patches
 });
 
-export const syncGlobal = (newState: { [key: string]: never }) => ({
+export const syncGlobal = (newState: { [key: string]: unknown }) => ({
 	type: SYNC_GLOBAL_ACTION,
 	payload: newState
 });
@@ -23,6 +23,14 @@ export const immerProxyStoreReducer = <T>(
 ): T => {
 	if (!('payload' in action)) {
 		return state;
+	}
+
+	if (action.type === SYNC_GLOBAL_ACTION) {
+		const newState = {
+			...(action.payload as Record<string, unknown>),
+			[SYNC_KEY]: true
+		};
+		return newState as T;
 	}
 
 	return produce(state as T & ProxyState, (draft) => {
@@ -63,9 +71,6 @@ export const immerProxyStoreReducer = <T>(
 
 				break;
 			}
-			case SYNC_GLOBAL_ACTION:
-				Object.assign(draft, action.payload, { [SYNC_KEY]: true });
-				break;
 
 			default:
 				break;
