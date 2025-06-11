@@ -8,6 +8,12 @@ vi.mock('webextension-polyfill', () => {
 					addListener: vi.fn()
 				},
 				connect: vi.fn(() => ({}))
+			},
+			alarms: {
+				create: vi.fn(),
+				onAlarm: {
+					addListener: vi.fn()
+				}
 			}
 		}
 	};
