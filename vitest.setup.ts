@@ -10,3 +10,7 @@ vi.stubGlobal('document', {
 	visibilityState: 'visible',
 	addEventListener: vi.fn()
 });
+
+vi.stubGlobal('window', {
+	addEventListener: vi.fn()
+});

@@ -15,6 +15,29 @@ import { IntervalTimer } from '../../utils/IntervalTimer';
 
 const HEARTBEAT_ALARM_NAME = 'synco-redux-heartbeat';
 
+const formattedDateTime = (timestamp: number): string => {
+	const date = new Date(timestamp);
+	return (
+		date.toLocaleString('en-US', {
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: false
+		}) + `.${date.getMilliseconds().toString().padStart(3, '0')}`
+	);
+};
+
+const log = (...args: unknown[]) => {
+	console.log(
+		'\x1b[1m[SyncoRedux]\x1b[0m',
+		`[${formattedDateTime(Date.now())}]`,
+		...args
+	);
+};
+
 interface IOptions {
 	resyncOnFocus: boolean;
 	heartbeatPeriod: number;
@@ -41,17 +64,35 @@ export class PortProxyComms implements IProxyComms {
 	) {
 		this.options = { ...DEFAULT_OPTIONS, ...options };
 
-		this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
-			periodInMinutes: this.options.heartbeatPeriod
-		});
+		if (this.browser.alarms) {
+			log('setting up an alarm:', HEARTBEAT_ALARM_NAME);
+			this.browser.alarms.onAlarm.addListener(this.handleAlarm);
 
-		this.browser.alarms.onAlarm.addListener(this.handleAlarm);
+			this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
+				periodInMinutes: this.options.heartbeatPeriod
+			});
+		}
 
 		if (this.options.resyncOnFocus && document) {
 			document.addEventListener('visibilitychange', () => {
 				if (document.visibilityState === 'visible') {
-					console.log('[SyncoRedux] tab is now focused');
+					log(' tab is now focused');
 					this.handleHeartbeat();
+				}
+			});
+		}
+
+		if (window) {
+			// bfcache fix, if the page is cached, the port will be undefined
+			window.addEventListener('pageshow', (event) => {
+				if (event.persisted) {
+					if (this.port) {
+						log('pageshow: port is valid, reconnecting');
+						this.port.disconnect();
+					} else {
+						log('pageshow: port is not valid, setting up port');
+						this.setupPort();
+					}
 				}
 			});
 		}
@@ -81,8 +122,10 @@ export class PortProxyComms implements IProxyComms {
 
 	postMessage = (message: unknown) => {
 		if (!this.getIsPortValid()) {
+			log('postMessage: port is not valid, setting up port');
 			this.setupPort();
 		}
+		log('postMessage: sending message', message);
 		this.port?.postMessage(message);
 	};
 
@@ -95,11 +138,11 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private getIsPortValid = () => {
-		return this.port && !this.port.error;
+		return this.port !== undefined && !this.port.error;
 	};
 
 	private handleOnMessage = (message: unknown) => {
-		console.log('[SyncoRedux] received message', message);
+		log(' received message', message);
 
 		if (!isSyncMessage(message)) {
 			return;
@@ -111,9 +154,7 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnDisconnect = () => {
-		console.log(
-			`[SyncoRedux] Disconnected due to an error: ${this.port?.error?.message}`
-		);
+		log(` Disconnected due to an error: ${this.port?.error?.message}`);
 		this.port = undefined;
 		if (this.store) {
 			this.setupPort();
@@ -126,7 +167,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		console.warn('[SyncoRedux] Failed to sync with main, retrying...');
+		log(' Failed to sync with main, retrying...');
 		this.postMessage(syncMessage());
 	};
 
@@ -154,7 +195,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		console.log('[SyncoRedux] heartbeat alarm');
+		log(' heartbeat alarm');
 		this.handleHeartbeat();
 	};
 
@@ -166,14 +207,20 @@ export class PortProxyComms implements IProxyComms {
 		const nextUpdateThreshold =
 			this.lastUpdate + this.options.heartbeatResyncThreshold;
 
-		console.log('[SyncoRedux] heartbeat resync threshold', nextUpdateThreshold);
+		const isPortConnectedButNoLastUpdate =
+			this.getIsPortValid() && !this.lastUpdate;
 
-		if (nextUpdateThreshold > Date.now()) {
+		log(' heartbeat resync threshold', nextUpdateThreshold, this.lastUpdate, {
+			nextUpdateThreshold,
+			isPortConnectedButNoLastUpdate
+		});
+
+		if (nextUpdateThreshold > Date.now() && !isPortConnectedButNoLastUpdate) {
 			return;
 		}
 
 		this.lastUpdate = Date.now();
-		console.log('[SyncoRedux] heartbeat resync');
+		log(' heartbeat resync');
 		this.postMessage(syncMessage());
 	};
 }
