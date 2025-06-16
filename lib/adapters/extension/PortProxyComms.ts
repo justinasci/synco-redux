@@ -12,42 +12,17 @@ import {
 import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
 import { isProxyReadySync } from '../../proxyStore/isProxyReadySync';
 import { IntervalTimer } from '../../utils/IntervalTimer';
+import { ILogger, SilentLogger } from '../../utils/log';
+import { IProxyCommsOptions } from './IProxyCommsOptions';
 
 const HEARTBEAT_ALARM_NAME = 'synco-redux-heartbeat';
 
-const formattedDateTime = (timestamp: number): string => {
-	const date = new Date(timestamp);
-	return (
-		date.toLocaleString('en-US', {
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: false
-		}) + `.${date.getMilliseconds().toString().padStart(3, '0')}`
-	);
-};
-
-const log = (...args: unknown[]) => {
-	console.log(
-		'\x1b[1m[SyncoRedux]\x1b[0m',
-		`[${formattedDateTime(Date.now())}]`,
-		...args
-	);
-};
-
-interface IOptions {
-	resyncOnFocus: boolean;
-	heartbeatPeriod: number;
-	heartbeatResyncThreshold: number;
-}
-
-const DEFAULT_OPTIONS: IOptions = {
+const DEFAULT_OPTIONS: IProxyCommsOptions = {
 	resyncOnFocus: true,
 	heartbeatPeriod: 1,
-	heartbeatResyncThreshold: 5000
+	heartbeatResyncThreshold: 5000,
+	enableHeartbeat: true,
+	logger: SilentLogger
 };
 
 export class PortProxyComms implements IProxyComms {
@@ -56,16 +31,20 @@ export class PortProxyComms implements IProxyComms {
 	store: Store | undefined;
 
 	lastUpdate: number | null = null;
-	options: IOptions;
+	options: IProxyCommsOptions;
+
+	logger: ILogger;
 
 	constructor(
 		private browser: typeof Browser,
-		options: Partial<IOptions> = {}
+		options: Partial<IProxyCommsOptions> = {}
 	) {
 		this.options = { ...DEFAULT_OPTIONS, ...options };
 
-		if (this.browser.alarms) {
-			log('setting up an alarm:', HEARTBEAT_ALARM_NAME);
+		this.logger = options.logger || SilentLogger;
+
+		if (this.browser.alarms && this.options.enableHeartbeat) {
+			this.logger.info('setting up an alarm:', HEARTBEAT_ALARM_NAME);
 			this.browser.alarms.onAlarm.addListener(this.handleAlarm);
 
 			this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
@@ -76,21 +55,20 @@ export class PortProxyComms implements IProxyComms {
 		if (this.options.resyncOnFocus && document) {
 			document.addEventListener('visibilitychange', () => {
 				if (document.visibilityState === 'visible') {
-					log(' tab is now focused');
 					this.handleHeartbeat();
 				}
 			});
 		}
 
 		if (window) {
-			// bfcache fix, if the page is cached, the port will be undefined
+			// bfcache fix, if the page is cached, the port will be undefined§
 			window.addEventListener('pageshow', (event) => {
 				if (event.persisted) {
 					if (this.port) {
-						log('pageshow: port is valid, reconnecting');
+						this.logger.log('pageshow: port is valid, reconnecting');
 						this.port.disconnect();
 					} else {
-						log('pageshow: port is not valid, setting up port');
+						this.logger.log('pageshow: port is not valid, setting up port');
 						this.setupPort();
 					}
 				}
@@ -122,10 +100,10 @@ export class PortProxyComms implements IProxyComms {
 
 	postMessage = (message: unknown) => {
 		if (!this.getIsPortValid()) {
-			log('postMessage: port is not valid, setting up port');
+			this.logger.log('postMessage: port is not valid, setting up port');
 			this.setupPort();
 		}
-		log('postMessage: sending message', message);
+		this.logger.log('postMessage: sending message', message);
 		this.port?.postMessage(message);
 	};
 
@@ -142,7 +120,7 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnMessage = (message: unknown) => {
-		log(' received message', message);
+		this.logger.log('received message', message);
 
 		if (!isSyncMessage(message)) {
 			return;
@@ -154,7 +132,9 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnDisconnect = () => {
-		log(` Disconnected due to an error: ${this.port?.error?.message}`);
+		this.logger.log(
+			` Disconnected due to an error: ${this.port?.error?.message}`
+		);
 		this.port = undefined;
 		if (this.store) {
 			this.setupPort();
@@ -167,7 +147,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		log(' Failed to sync with main, retrying...');
+		this.logger.log('Failed to sync with main, retrying...');
 		this.postMessage(syncMessage());
 	};
 
@@ -195,7 +175,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		log(' heartbeat alarm');
+		this.logger.log('heartbeat alarm');
 		this.handleHeartbeat();
 	};
 
@@ -210,17 +190,22 @@ export class PortProxyComms implements IProxyComms {
 		const isPortConnectedButNoLastUpdate =
 			this.getIsPortValid() && !this.lastUpdate;
 
-		log(' heartbeat resync threshold', nextUpdateThreshold, this.lastUpdate, {
+		this.logger.info(
+			' heartbeat resync threshold',
 			nextUpdateThreshold,
-			isPortConnectedButNoLastUpdate
-		});
+			this.lastUpdate,
+			{
+				nextUpdateThreshold,
+				isPortConnectedButNoLastUpdate
+			}
+		);
 
 		if (nextUpdateThreshold > Date.now() && !isPortConnectedButNoLastUpdate) {
 			return;
 		}
 
 		this.lastUpdate = Date.now();
-		log(' heartbeat resync');
+		this.logger.log(' heartbeat resync');
 		this.postMessage(syncMessage());
 	};
 }

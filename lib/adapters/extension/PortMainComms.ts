@@ -11,36 +11,42 @@ import {
 	SyncMessage
 } from '../../syncMessage';
 import { Patch } from '../../mainStore/patchGenerator';
+import { ILogger, SilentLogger } from '../../utils/log';
+
+export interface IMainCommsOptions {
+	logger: ILogger;
+}
 
 export class PortMainComms implements IComms {
 	openPorts: Browser.Runtime.Port[] = [];
+	store: Store | undefined;
 
-	constructor(private browser: typeof Browser) {}
+	private logger: ILogger;
+
+	constructor(
+		private browser: typeof Browser,
+		options: IMainCommsOptions = {
+			logger: SilentLogger
+		}
+	) {
+		this.logger = options.logger || SilentLogger;
+	}
 
 	init = (store: Store) => {
-		this.browser.runtime.onConnect.addListener((port) => {
-			if (port.name !== SYNCO_PORT_ID) {
-				return;
-			}
-			this.openPorts.push(port);
-
-			port.onDisconnect.addListener(() => {
-				this.openPorts = this.openPorts.filter((p) => p !== port);
-			});
-
-			port.onMessage.addListener((m) => {
-				if (!isSyncMessage(m)) {
-					return;
-				}
-				this.handlePortMessage(port, store, m as SyncMessage);
-			});
-		});
+		this.logger.info('init');
+		this.store = store;
+		this.browser.runtime.onConnect.addListener(this.setupListener);
 	};
 
 	submitPatches = (patches: Patch[]) => {
-		if (patches.length === 0) {
+		if (patches.length === 0 || this.openPorts.length === 0) {
 			return;
 		}
+
+		this.logger.info('submitting patches:', {
+			patches,
+			openPorts: this.openPorts.length
+		});
 
 		this.openPorts.forEach((p) => {
 			try {
@@ -63,5 +69,36 @@ export class PortMainComms implements IComms {
 		if (message.type === SYNC_GLOBAL) {
 			port.postMessage(syncMessage(store.getState()));
 		}
+	};
+
+	private setupListener = (port: Browser.Runtime.Port) => {
+		if (port.name !== SYNCO_PORT_ID) {
+			return;
+		}
+
+		this.logger.info('port connected', {
+			port,
+			openPorts: this.openPorts
+		});
+
+		this.openPorts.push(port);
+
+		port.onDisconnect.addListener(() => {
+			this.logger.info('port disconnected');
+			this.openPorts = this.openPorts.filter((p) => p !== port);
+		});
+
+		port.onMessage.addListener((m) => {
+			if (!isSyncMessage(m)) {
+				return;
+			}
+
+			if (!this.store) {
+				return;
+			}
+
+			this.logger.info('port message received', m);
+			this.handlePortMessage(port, this.store!, m as SyncMessage);
+		});
 	};
 }
