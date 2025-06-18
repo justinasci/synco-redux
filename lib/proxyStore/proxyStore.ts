@@ -31,6 +31,7 @@ export const createProxyStoreEnhancer = (comms: IProxyComms): StoreEnhancer => {
 			}
 
 			comms.postMessage(dispatchMesssage(action));
+
 			return action;
 		};
 

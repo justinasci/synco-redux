@@ -12,6 +12,7 @@ import {
 	getSyncoReduxElectronApi,
 	registerSyncoReduxContextBridge
 } from './utils/electronUtils';
+import { Logger } from './utils/log';
 
 export {
 	createMainStoreEnhancer,
@@ -25,6 +26,7 @@ export {
 	ElectronProxyComms,
 	ElectronComms,
 	getSyncoReduxElectronApi,
-	registerSyncoReduxContextBridge
+	registerSyncoReduxContextBridge,
+	Logger
 };
 

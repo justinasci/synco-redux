@@ -5,3 +5,12 @@ vi.stubGlobal('chrome', {
         id: 'mocked-extension-id', // Mock the runtime id
     },
 });
+
+vi.stubGlobal('document', {
+	visibilityState: 'visible',
+	addEventListener: vi.fn()
+});
+
+vi.stubGlobal('window', {
+	addEventListener: vi.fn()
+});
