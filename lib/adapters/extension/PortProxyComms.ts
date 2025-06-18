@@ -18,10 +18,10 @@ import { IProxyCommsOptions } from './IProxyCommsOptions';
 const HEARTBEAT_ALARM_NAME = 'synco-redux-heartbeat';
 
 const DEFAULT_OPTIONS: IProxyCommsOptions = {
-	resyncOnFocus: true,
+	resyncOnFocus: false,
+	enableHeartbeat: false,
+	resyncThreshold: 5000,
 	heartbeatPeriod: 1,
-	heartbeatResyncThreshold: 5000,
-	enableHeartbeat: true,
 	logger: SilentLogger
 };
 
@@ -43,37 +43,9 @@ export class PortProxyComms implements IProxyComms {
 
 		this.logger = options.logger || SilentLogger;
 
-		if (this.browser.alarms && this.options.enableHeartbeat) {
-			this.logger.info('setting up an alarm:', HEARTBEAT_ALARM_NAME);
-			this.browser.alarms.onAlarm.addListener(this.handleAlarm);
-
-			this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
-				periodInMinutes: this.options.heartbeatPeriod
-			});
-		}
-
-		if (this.options.resyncOnFocus && document) {
-			document.addEventListener('visibilitychange', () => {
-				if (document.visibilityState === 'visible') {
-					this.handleHeartbeat();
-				}
-			});
-		}
-
-		if (window) {
-			// bfcache fix, if the page is cached, the port will be undefined§
-			window.addEventListener('pageshow', (event) => {
-				if (event.persisted) {
-					if (this.port) {
-						this.logger.log('pageshow: port is valid, reconnecting');
-						this.port.disconnect();
-					} else {
-						this.logger.log('pageshow: port is not valid, setting up port');
-						this.setupPort();
-					}
-				}
-			});
-		}
+		this.setupAlarm();
+		this.setupTabFocusHandler();
+		this.setupBFCacheHandler();
 	}
 
 	private openPort = () => {
@@ -120,7 +92,7 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnMessage = (message: unknown) => {
-		this.logger.log('received message', message);
+		this.logger.info('received message', message);
 
 		if (!isSyncMessage(message)) {
 			return;
@@ -132,8 +104,8 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleOnDisconnect = () => {
-		this.logger.log(
-			` Disconnected due to an error: ${this.port?.error?.message}`
+		this.logger.warn(
+			`Disconnected due to an error: ${this.port?.error?.message}`
 		);
 		this.port = undefined;
 		if (this.store) {
@@ -147,7 +119,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		this.logger.log('Failed to sync with main, retrying...');
+		this.logger.warn('Failed to sync with main, retrying...');
 		this.postMessage(syncMessage());
 	};
 
@@ -175,7 +147,7 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		this.logger.log('heartbeat alarm');
+		this.logger.info('heartbeat alarm');
 		this.handleHeartbeat();
 	};
 
@@ -184,14 +156,13 @@ export class PortProxyComms implements IProxyComms {
 			return;
 		}
 
-		const nextUpdateThreshold =
-			this.lastUpdate + this.options.heartbeatResyncThreshold;
+		const nextUpdateThreshold = this.lastUpdate + this.options.resyncThreshold;
 
 		const isPortConnectedButNoLastUpdate =
 			this.getIsPortValid() && !this.lastUpdate;
 
 		this.logger.info(
-			' heartbeat resync threshold',
+			'heartbeat resync threshold',
 			nextUpdateThreshold,
 			this.lastUpdate,
 			{
@@ -205,8 +176,56 @@ export class PortProxyComms implements IProxyComms {
 		}
 
 		this.lastUpdate = Date.now();
-		this.logger.log(' heartbeat resync');
+		this.logger.info('heartbeat resync');
 		this.postMessage(syncMessage());
+	};
+
+	private setupAlarm = async () => {
+		if (!this.browser.alarms) {
+			return;
+		}
+
+		const existingAlarm = await this.browser.alarms.get(HEARTBEAT_ALARM_NAME);
+
+		if (this.options.enableHeartbeat) {
+			this.browser.alarms.onAlarm.addListener(this.handleAlarm);
+
+			this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
+				periodInMinutes: this.options.heartbeatPeriod
+			});
+		} else if (existingAlarm) {
+			await this.browser.alarms.clear(HEARTBEAT_ALARM_NAME);
+		}
+	};
+
+	private setupBFCacheHandler = () => {
+		if (!window) {
+			return;
+		}
+		// bfcache fix, if the page is cached, the port will be undefined
+		window.addEventListener('pageshow', (event) => {
+			if (event.persisted) {
+				if (this.port) {
+					this.logger.warn('pageshow: port is valid, reconnecting');
+					this.port.disconnect();
+				} else {
+					this.logger.warn('pageshow: port is not valid, setting up port');
+					this.setupPort();
+				}
+			}
+		});
+	};
+
+	private setupTabFocusHandler = () => {
+		if (!document || !this.options.resyncOnFocus) {
+			return;
+		}
+
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'visible') {
+				this.handleHeartbeat();
+			}
+		});
 	};
 }
 

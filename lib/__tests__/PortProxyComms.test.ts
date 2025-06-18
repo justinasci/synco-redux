@@ -13,7 +13,9 @@ vi.mock('webextension-polyfill', () => {
 				create: vi.fn(),
 				onAlarm: {
 					addListener: vi.fn()
-				}
+				},
+				get: vi.fn(),
+				clear: vi.fn()
 			}
 		}
 	};
@@ -56,6 +58,18 @@ vi.mock('../utils/IntervalTimer', () => {
 
 describe('BrowserExtensionProxyComms', () => {
 	let comms: PortProxyComms;
+	let mockPort: any;
+	let mockLogger: any;
+
+	// Shared mock setup for all tests
+	beforeEach(() => {
+		vi.resetAllMocks();
+		mockPort = createMockPort();
+		// @ts-expect-error for test mock
+		Browser.runtime.connect.mockReturnValue(mockPort);
+		mockLogger = { log: vi.fn(), warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+		comms = new PortProxyComms(Browser);
+	});
 
 	// Helper function to create a basic mock port
 	const createMockPort = (overrides = {}) => ({
@@ -76,11 +90,6 @@ describe('BrowserExtensionProxyComms', () => {
 	// Helper function to create an error port
 	const createErrorPort = (error = new Error('Connection error')) =>
 		createMockPort({ error });
-
-	beforeEach(() => {
-		vi.resetAllMocks();
-		comms = new PortProxyComms(Browser);
-	});
 
 	it('should connect to the browser extension runtime', () => {
 		const mockPort = createMockPort();
@@ -323,5 +332,35 @@ describe('BrowserExtensionProxyComms', () => {
 
 		// Connect should not have been called again
 		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	// Heartbeat-related tests
+	describe('heartbeat', () => {
+		it('should trigger heartbeat resync if threshold exceeded', () => {
+			const now = Date.now();
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			comms = new PortProxyComms(Browser, {
+				logger: mockLogger,
+				resyncThreshold: 1000
+			});
+			comms.port = mockPort;
+			comms.lastUpdate = now - 2000; // Exceeds threshold
+			comms['handleHeartbeat']();
+			expect(mockPort.postMessage).toHaveBeenCalledWith(syncMessage());
+		});
+
+		it('should not trigger heartbeat resync if threshold not exceeded', () => {
+			const now = Date.now();
+			vi.spyOn(Date, 'now').mockReturnValue(now);
+			comms = new PortProxyComms(Browser, {
+				logger: mockLogger,
+				resyncThreshold: 5000
+			});
+			comms.port = mockPort;
+			comms.lastUpdate = now - 1000; // Not enough time passed
+			comms['handleHeartbeat']();
+			expect(mockLogger.log).not.toHaveBeenCalledWith('heartbeat resync');
+			expect(mockPort.postMessage).not.toHaveBeenCalled();
+		});
 	});
 });

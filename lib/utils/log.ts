@@ -13,10 +13,9 @@ export const Logger: ILogger = {
 };
 
 export const SilentLogger: ILogger = {
+	...Logger,
 	log: () => {},
-	warn: () => {},
-	info: () => {},
-	error: () => {}
+	info: () => {}
 };
 const formattedDateTime = (timestamp: number): string => {
 	const date = new Date(timestamp);

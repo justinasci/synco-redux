@@ -3,13 +3,13 @@ import { ILogger } from '../../utils/log';
 export interface IProxyCommsOptions {
 	/**
 	 * Triggers resync when tab is in focus
-	 * @default true
+	 * @default false
 	 */
 	resyncOnFocus: boolean;
 
 	/**
 	 * Whether to enable the heartbeat alarm
-	 * @default true
+	 * @default false
 	 */
 	enableHeartbeat: boolean;
 
@@ -20,10 +20,10 @@ export interface IProxyCommsOptions {
 	heartbeatPeriod: number;
 
 	/**
-	 * The threshold from the last update to the next heartbeat, in milliseconds.
+	 * The threshold from the last update to the next resync, in milliseconds.
 	 * @default 5000 ms
 	 */
-	heartbeatResyncThreshold: number;
+	resyncThreshold: number;
 
 	/**
 	 * The logger to use, defaults to no logging
