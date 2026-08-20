@@ -10,10 +10,8 @@ export const SYNC_GLOBAL_ACTION = 'proxyStore/syncGlobal' as const;
 // Patches arrive from another process over the port/IPC channel, so every path
 // segment is untrusted input. Walking or writing through these keys would reach
 // Object.prototype and let a sender tamper with every object in the app.
-const UNSAFE_PATH_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
-
-const isSafePath = (path: (string | number)[]): boolean =>
-	path.every((key) => !UNSAFE_PATH_KEYS.has(String(key)));
+// The comparisons are spelled out at each use site rather than hidden behind a
+// Set lookup so static analysis can see the guard dominating the write.
 
 export const applyPatch = (patches: Patch[]) => ({
 	type: APPLY_PATCH_ACTION,
@@ -62,22 +60,41 @@ export const immerProxyStoreReducer = <T>(
 				patches.forEach((patch) => {
 					const { op, path, value } = patch;
 
-					if (path.length === 0 || !isSafePath(path)) {
+					if (path.length === 0) {
 						return;
 					}
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let target: any = draft;
 
 					// Traverse the path except for the last key
 					for (let i = 0; i < path.length - 1; i++) {
-						target = target[path[i] as keyof typeof target];
+						const key = path[i];
+
+						if (
+							key === '__proto__' ||
+							key === 'prototype' ||
+							key === 'constructor'
+						) {
+							return;
+						}
+
+						target = target[key as keyof typeof target];
 
 						if (target === null || typeof target !== 'object') {
 							return;
 						}
 					}
 
-					const lastKey = path[path.length - 1] as keyof typeof target;
+					const lastKey = path[path.length - 1];
+
+					if (
+						lastKey === '__proto__' ||
+						lastKey === 'prototype' ||
+						lastKey === 'constructor'
+					) {
+						return;
+					}
 
 					switch (op) {
 						case 'replace':
