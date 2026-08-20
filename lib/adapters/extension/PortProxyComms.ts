@@ -201,7 +201,7 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private setupBFCacheHandler = () => {
-		if (!window) {
+		if (typeof window === 'undefined') {
 			return;
 		}
 		// bfcache fix, if the page is cached, the port will be undefined
@@ -219,7 +219,7 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private setupTabFocusHandler = () => {
-		if (!document || !this.options.resyncOnFocus) {
+		if (typeof document === 'undefined' || !this.options.resyncOnFocus) {
 			return;
 		}
 

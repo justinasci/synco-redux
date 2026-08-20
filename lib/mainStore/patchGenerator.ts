@@ -10,16 +10,25 @@ export function generatePatches(prevState: any, nextState: any): Patch[] {
 	const patches: Patch[] = [];
 
 	function deepDiff(path: (string | number)[], oldValue: any, newValue: any) {
-		if (Array.isArray(oldValue) && Array.isArray(newValue)) {
-			// If arrays are entirely different, replace them instead of diffing
+		const oldIsArray = Array.isArray(oldValue);
+		const newIsArray = Array.isArray(newValue);
+
+		if (oldIsArray || newIsArray) {
+			// Arrays are replaced wholesale instead of diffed. A change between
+			// array and non-array is a replace as well: both are `typeof
+			// 'object'`, so diffing them key-wise would emit patches that leave
+			// the target with the wrong type.
 			if (
+				oldIsArray !== newIsArray ||
 				oldValue.length !== newValue.length ||
-				!oldValue.every((val, i) => val === newValue[i])
+				!oldValue.every((val: unknown, i: number) => val === newValue[i])
 			) {
 				patches.push({ op: 'replace', path, value: newValue });
-				return;
 			}
-		} else if (
+			return;
+		}
+
+		if (
 			typeof oldValue === 'object' &&
 			typeof newValue === 'object' &&
 			oldValue !== null &&

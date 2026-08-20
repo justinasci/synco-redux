@@ -33,6 +33,19 @@ export const immerProxyStoreReducer = <T>(
 		return newState as T;
 	}
 
+	if (action.type === APPLY_PATCH_ACTION) {
+		// An empty path targets the root itself, which cannot be expressed by
+		// mutating a draft: assigning would write a key literally named
+		// "undefined" onto the existing state instead of replacing it.
+		const rootPatch = (action.payload as Patch[]).find(
+			(patch) => patch.path.length === 0
+		);
+
+		if (rootPatch) {
+			return rootPatch.value as T;
+		}
+	}
+
 	return produce(state as T & ProxyState, (draft) => {
 		switch (action.type) {
 			case APPLY_PATCH_ACTION: {

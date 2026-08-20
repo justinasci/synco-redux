@@ -137,4 +137,26 @@ describe("generatePatches", () => {
             { op: "remove", path: ["items"] }, // `items` key is removed
         ]);
     });
+
+    test("replaces the value when an array becomes an object", () => {
+        const prevState = { a: [1, 2] };
+        const nextState = { a: { x: 1 } };
+
+        const patches = generatePatches(prevState, nextState);
+
+        expect(patches).toEqual([
+            { op: "replace", path: ["a"], value: { x: 1 } },
+        ]);
+    });
+
+    test("replaces the value when an object becomes an array", () => {
+        const prevState = { a: { x: 1 } };
+        const nextState = { a: [1, 2] };
+
+        const patches = generatePatches(prevState, nextState);
+
+        expect(patches).toEqual([
+            { op: "replace", path: ["a"], value: [1, 2] },
+        ]);
+    });
 });
