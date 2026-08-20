@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import {
 	applyPatch,
 	immerProxyStoreReducer,
@@ -119,6 +119,104 @@ describe('immerProxyStoreReducer', () => {
 			);
 
 			expect(result).toEqual({ baz: 'qux' });
+		});
+	});
+	describe('APPLY_PATCH_ACTION prototype pollution', () => {
+		afterEach(() => {
+			// Undo pollution so a failure here cannot cascade into other tests
+			delete (Object.prototype as Record<string, unknown>).polluted;
+		});
+
+		it('should not pollute Object.prototype through a __proto__ path', () => {
+			const state: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				[SYNC_KEY]: true
+			};
+
+			immerProxyStoreReducer(
+				state,
+				applyPatch([{ op: 'add', path: ['__proto__', 'polluted'], value: 'yes' }])
+			);
+
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+			expect(Object.prototype).not.toHaveProperty('polluted');
+		});
+
+		it('should not pollute Object.prototype through a constructor.prototype path', () => {
+			const state: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				[SYNC_KEY]: true
+			};
+
+			immerProxyStoreReducer(
+				state,
+				applyPatch([
+					{
+						op: 'add',
+						path: ['constructor', 'prototype', 'polluted'],
+						value: 'yes'
+					}
+				])
+			);
+
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+			expect(Object.prototype).not.toHaveProperty('polluted');
+		});
+
+		it('should not delete inherited properties through a __proto__ path', () => {
+			(Object.prototype as Record<string, unknown>).polluted = 'preexisting';
+
+			const state: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				[SYNC_KEY]: true
+			};
+
+			immerProxyStoreReducer(
+				state,
+				applyPatch([{ op: 'remove', path: ['__proto__', 'polluted'] }])
+			);
+
+			expect(Object.prototype).toHaveProperty('polluted');
+		});
+
+		it('should still apply legitimate patches', () => {
+			const state: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				nested: { count: 1 },
+				list: [1, 2, 3],
+				[SYNC_KEY]: true
+			};
+
+			const result = immerProxyStoreReducer(
+				state,
+				applyPatch([
+					{ op: 'replace', path: ['foo'], value: 'baz' },
+					{ op: 'add', path: ['nested', 'added'], value: true },
+					{ op: 'remove', path: ['list', 1] }
+				])
+			);
+
+			expect(result.foo).toBe('baz');
+			expect(result.nested).toEqual({ count: 1, added: true });
+			expect(result.list).toEqual([1, 3]);
+		});
+
+		it('should drop only the unsafe patch and keep the rest', () => {
+			const state: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				[SYNC_KEY]: true
+			};
+
+			const result = immerProxyStoreReducer(
+				state,
+				applyPatch([
+					{ op: 'add', path: ['__proto__', 'polluted'], value: 'yes' },
+					{ op: 'replace', path: ['foo'], value: 'baz' }
+				])
+			);
+
+			expect(result.foo).toBe('baz');
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
 		});
 	});
 });
