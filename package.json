@@ -24,22 +24,22 @@
 		"build": "tsc && vite build",
 		"test": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"lint": "eslint . --ext .js,.ts,.jsx,.tsx --ignore-pattern dist/"
+		"lint": "oxlint --type-aware"
 	},
 	"devDependencies": {
-		"@eslint/js": "^10.0.1",
 		"@reduxjs/toolkit": "^2.6.0",
 		"@types/electron": "^1.4.38",
 		"@types/webextension-polyfill": "^0.12.3",
+		"@typescript/typescript6": "^6.0.2",
 		"@vitest/coverage-v8": "^4.1.11",
 		"electron": "^43.4.1",
-		"eslint": "^10.8.1",
+		"oxlint": "^1.79.0",
+		"oxlint-tsgolint": "^7.0.2001",
 		"prettier": "^3.5.3",
-		"typescript": "~6.0.3",
-		"typescript-eslint": "^8.26.0",
+		"typescript": "^7.0.2",
 		"vite": "^8.2.2",
 		"vite-plugin-dts": "^5.0.3",
-		"vite-plugin-eslint": "^1.8.1",
+		"vite-plugin-oxlint": "^2.1.2",
 		"vitest": "^4.1.11",
 		"webextension-polyfill": "^0.12.0"
 	},

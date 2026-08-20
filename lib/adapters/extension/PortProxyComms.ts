@@ -43,7 +43,9 @@ export class PortProxyComms implements IProxyComms {
 
 		this.logger = options.logger || SilentLogger;
 
-		this.setupAlarm();
+		void this.setupAlarm().catch((error: unknown) => {
+			this.logger.error('failed to set up heartbeat alarm', error);
+		});
 		this.setupTabFocusHandler();
 		this.setupBFCacheHandler();
 	}
@@ -190,7 +192,7 @@ export class PortProxyComms implements IProxyComms {
 		if (this.options.enableHeartbeat) {
 			this.browser.alarms.onAlarm.addListener(this.handleAlarm);
 
-			this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
+			await this.browser.alarms.create(HEARTBEAT_ALARM_NAME, {
 				periodInMinutes: this.options.heartbeatPeriod
 			});
 		} else if (existingAlarm) {

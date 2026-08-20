@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
-import eslint from 'vite-plugin-eslint';
+import oxlint from 'vite-plugin-oxlint';
 
 export default defineConfig({
 	build: {
@@ -39,6 +39,6 @@ export default defineConfig({
 			insertTypesEntry: true, // Add a reference to `types.d.ts` in the entry file
 			exclude: ['./lib/__tests__/**']
 		}),
-		eslint()
+		oxlint({ path: 'lib', params: '--type-aware', failOnError: true })
 	]
 });

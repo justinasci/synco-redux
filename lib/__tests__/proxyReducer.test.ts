@@ -94,7 +94,7 @@ describe('immerProxyStoreReducer', () => {
 			const result = immerProxyStoreReducer(
 				initialState,
 				syncGlobal({
-					[SYNC_KEY]: false as never
+					[SYNC_KEY]: false
 				})
 			);
 
