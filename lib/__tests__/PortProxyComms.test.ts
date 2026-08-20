@@ -49,10 +49,14 @@ const mockStore = {
 vi.mock('../utils/IntervalTimer', () => {
 	const mockStart = vi.fn();
 	return {
-		IntervalTimer: vi.fn(() => ({
-			start: mockStart,
-			stop: vi.fn()
-		}))
+		// function expression, not arrow: vitest 4 requires a constructable
+		// implementation for mocks invoked with `new`
+		IntervalTimer: vi.fn(function () {
+			return {
+				start: mockStart,
+				stop: vi.fn()
+			};
+		})
 	};
 });
 
