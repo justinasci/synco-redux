@@ -98,7 +98,7 @@ export class PortMainComms implements IComms {
 			}
 
 			this.logger.info('port message received', m);
-			this.handlePortMessage(port, this.store!, m as SyncMessage);
+			this.handlePortMessage(port, this.store, m as SyncMessage);
 		});
 	};
 }

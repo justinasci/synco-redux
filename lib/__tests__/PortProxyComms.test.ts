@@ -367,4 +367,22 @@ describe('BrowserExtensionProxyComms', () => {
 			expect(mockPort.postMessage).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('non-DOM environments', () => {
+		it('should construct where window and document are undeclared', () => {
+			const globals = globalThis as Record<string, unknown>;
+			const savedWindow = globals.window;
+			const savedDocument = globals.document;
+
+			delete globals.window;
+			delete globals.document;
+
+			try {
+				expect(() => new PortProxyComms(Browser)).not.toThrow();
+			} finally {
+				globals.window = savedWindow;
+				globals.document = savedDocument;
+			}
+		});
+	});
 });

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { immerProxyStoreReducer, syncGlobal } from '../proxyStore/proxyReducer';
+import {
+	applyPatch,
+	immerProxyStoreReducer,
+	syncGlobal
+} from '../proxyStore/proxyReducer';
 import { SYNC_KEY } from '../constants';
 import { ProxyState } from '../proxyStore/proxyStore';
 
@@ -94,11 +98,27 @@ describe('immerProxyStoreReducer', () => {
 			const result = immerProxyStoreReducer(
 				initialState,
 				syncGlobal({
-					[SYNC_KEY]: false as never
+					[SYNC_KEY]: false
 				})
 			);
 
 			expect(result[SYNC_KEY]).toBe(true); // Should always be true after sync
+		});
+	});
+
+	describe('APPLY_PATCH_ACTION', () => {
+		it('should replace the whole state when the patch path is empty', () => {
+			const initialState: Record<string, unknown> & ProxyState = {
+				foo: 'bar',
+				[SYNC_KEY]: true
+			};
+
+			const result = immerProxyStoreReducer(
+				initialState,
+				applyPatch([{ op: 'replace', path: [], value: { baz: 'qux' } }])
+			);
+
+			expect(result).toEqual({ baz: 'qux' });
 		});
 	});
 });
