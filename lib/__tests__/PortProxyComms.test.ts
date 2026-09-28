@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('webextension-polyfill', () => {
 	return {
@@ -33,7 +33,6 @@ import { applyPatch, syncGlobal } from '../proxyStore/proxyReducer';
 
 import Browser from 'webextension-polyfill';
 import { PortProxyComms } from '../adapters/extension/PortProxyComms';
-import { IntervalTimer } from '../utils/IntervalTimer';
 import * as ProxyReadySyncModule from '../proxyStore/isProxyReadySync';
 
 // Mock the store and actions
@@ -44,21 +43,6 @@ const mockStore = {
 	dispatch: mockDispatch,
 	getState: mockGetState
 } as unknown as Store;
-
-// Mock IntervalTimer
-vi.mock('../utils/IntervalTimer', () => {
-	const mockStart = vi.fn();
-	return {
-		// function expression, not arrow: vitest 4 requires a constructable
-		// implementation for mocks invoked with `new`
-		IntervalTimer: vi.fn(function () {
-			return {
-				start: mockStart,
-				stop: vi.fn()
-			};
-		})
-	};
-});
 
 describe('BrowserExtensionProxyComms', () => {
 	let comms: PortProxyComms;
@@ -178,69 +162,49 @@ describe('BrowserExtensionProxyComms', () => {
 		expect(mockDispatch).not.toHaveBeenCalled();
 	});
 
-	// New tests for sync retry logic
-	it('should create an IntervalTimer for sync retries during init', () => {
-		const mockPort = createMockPort();
+	describe('sync retry', () => {
+		let isReadySpy: ReturnType<typeof vi.spyOn>;
 
-		//@ts-expect-error mock
-		Browser.runtime.connect.mockReturnValue(mockPort);
+		beforeEach(() => {
+			vi.useFakeTimers();
+			isReadySpy = vi
+				.spyOn(ProxyReadySyncModule, 'isProxyReadySync')
+				.mockReturnValue(false);
+		});
 
-		comms.init(mockStore);
+		afterEach(() => {
+			vi.useRealTimers();
+		});
 
-		// Verify that IntervalTimer was created
-		expect(IntervalTimer).toHaveBeenCalled();
-		expect(IntervalTimer).toHaveBeenCalledWith(expect.any(Function), 500);
-	});
+		it('should retry sync with exponential backoff until synced', () => {
+			comms.init(mockStore);
+			mockPort.postMessage.mockClear();
 
-	it('should retry sync message when store is not synced', () => {
-		const mockPort = createMockPort();
+			for (const delay of [500, 1000, 2000]) {
+				vi.advanceTimersByTime(delay - 1);
+				expect(mockPort.postMessage).not.toHaveBeenCalled();
+				vi.advanceTimersByTime(1);
+				expect(mockPort.postMessage).toHaveBeenCalledWith(syncMessage());
+				mockPort.postMessage.mockClear();
+			}
 
-		//@ts-expect-error mock
-		Browser.runtime.connect.mockReturnValue(mockPort);
+			isReadySpy.mockReturnValue(true);
+			vi.advanceTimersByTime(60000);
+			expect(mockPort.postMessage).not.toHaveBeenCalled();
+		});
 
-		// Setup spy on isProxyReadySync
-		const isReadySpy = vi.spyOn(ProxyReadySyncModule, 'isProxyReadySync');
-		isReadySpy.mockReturnValue(false);
+		it('should stop retrying sync while disconnected', () => {
+			comms.init(mockStore);
+			mockPort.postMessage.mockClear();
+			//@ts-expect-error mock
+			Browser.runtime.connect.mockClear();
 
-		comms.init(mockStore);
+			mockPort.onDisconnect.addListener.mock.calls[0][0]();
+			vi.advanceTimersByTime(499);
 
-		// Get the callback function passed to IntervalTimer
-		const timerCallback = vi.mocked(IntervalTimer).mock.calls[0][0];
-
-		// Reset postMessage call count
-		mockPort.postMessage.mockClear();
-
-		// Call the timer callback
-		timerCallback();
-
-		// Verify that sync message was sent again
-		expect(mockPort.postMessage).toHaveBeenCalledWith(syncMessage());
-	});
-
-	it('should stop retry timer when store is synced', () => {
-		const mockPort = createMockPort();
-
-		//@ts-expect-error mock
-		Browser.runtime.connect.mockReturnValue(mockPort);
-
-		// Setup spy on isProxyReadySync
-		const isReadySpy = vi.spyOn(ProxyReadySyncModule, 'isProxyReadySync');
-		isReadySpy.mockReturnValue(true);
-
-		comms.init(mockStore);
-
-		// Set up a mock for the timer's stop method
-		const mockStop = vi.fn();
-		comms.syncIntervalTimer = { stop: mockStop } as unknown as IntervalTimer;
-
-		// Get the callback function passed to IntervalTimer
-		const timerCallback = vi.mocked(IntervalTimer).mock.calls[0][0];
-
-		// Call the timer callback
-		timerCallback();
-
-		// Verify that timer was stopped
-		expect(mockStop).toHaveBeenCalled();
+			expect(mockPort.postMessage).not.toHaveBeenCalled();
+			expect(Browser.runtime.connect).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should reconnect to port if it is invalid when sending a message', () => {
@@ -285,11 +249,20 @@ describe('BrowserExtensionProxyComms', () => {
 		const disconnectListener =
 			mockPort.onDisconnect.addListener.mock.calls[0][0];
 
-		// Call the disconnect listener
-		disconnectListener();
+		vi.useFakeTimers();
+		try {
+			// Call the disconnect listener
+			disconnectListener();
 
-		// The handleOnDisconnect method calls setupPort() again, which creates a new connection
-		// So the port should be the new reconnect port, not undefined
+			// Reconnect is scheduled, not immediate
+			expect(comms.port).toBeUndefined();
+
+			vi.advanceTimersByTime(500);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		// The reconnect timer calls setupPort() again, which creates a new connection
 		expect(comms.port).toBe(reconnectPort);
 
 		// Verify that a new connection was established
@@ -338,6 +311,126 @@ describe('BrowserExtensionProxyComms', () => {
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 
+	describe('reconnect backoff', () => {
+		const getDisconnectListener = (port: any) =>
+			port.onDisconnect.addListener.mock.calls[0][0];
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			//@ts-expect-error mock
+			Browser.runtime.connect.mockImplementation(() => createMockPort());
+			comms = new PortProxyComms(Browser, { logger: mockLogger });
+			comms.init(mockStore);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			delete (Browser.runtime as any).lastError;
+		});
+
+		it('should back off exponentially up to the max delay', () => {
+			const delays = [500, 1000, 2000, 4000, 8000, 16000, 30000, 30000];
+
+			for (const delay of delays) {
+				const connectCalls = vi.mocked(Browser.runtime.connect).mock.calls
+					.length;
+				getDisconnectListener(comms.port)();
+
+				vi.advanceTimersByTime(delay - 1);
+				expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls);
+
+				vi.advanceTimersByTime(1);
+				expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+			}
+		});
+
+		it('should honour custom backoff options', () => {
+			comms = new PortProxyComms(Browser, {
+				logger: mockLogger,
+				retryBaseDelay: 100,
+				retryMaxDelay: 150
+			});
+			comms.init(mockStore);
+
+			for (const delay of [100, 150, 150]) {
+				const connectCalls = vi.mocked(Browser.runtime.connect).mock.calls
+					.length;
+				getDisconnectListener(comms.port)();
+				vi.advanceTimersByTime(delay);
+				expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+			}
+		});
+
+		it('should read runtime.lastError on disconnect', () => {
+			const lastError = vi.fn(() => ({
+				message: 'Could not establish connection. Receiving end does not exist.'
+			}));
+			Object.defineProperty(Browser.runtime, 'lastError', {
+				get: lastError,
+				configurable: true
+			});
+
+			getDisconnectListener(comms.port)();
+
+			expect(lastError).toHaveBeenCalled();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Receiving end does not exist')
+			);
+		});
+
+		it('should reset the backoff after a sync message is received', () => {
+			getDisconnectListener(comms.port)();
+			vi.advanceTimersByTime(500);
+			getDisconnectListener(comms.port)();
+			vi.advanceTimersByTime(1000);
+
+			const messageListener = (comms.port as any).onMessage.addListener.mock
+				.calls[0][0];
+			messageListener(syncMessage());
+
+			const connectCalls = vi.mocked(Browser.runtime.connect).mock.calls.length;
+			getDisconnectListener(comms.port)();
+			vi.advanceTimersByTime(500);
+			expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+		});
+
+		it('should not open a port from postMessage while a reconnect is pending', () => {
+			getDisconnectListener(comms.port)();
+			const connectCalls = vi.mocked(Browser.runtime.connect).mock.calls.length;
+
+			vi.spyOn(ProxyReadySyncModule, 'isProxyReadySync').mockReturnValue(false);
+
+			comms.postMessage({ type: 'TEST' });
+			comms.lastUpdate = 1;
+			comms['handleHeartbeat']();
+			comms['handleSyncRetry']();
+
+			expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls);
+
+			vi.advanceTimersByTime(500);
+			expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+		});
+
+		it('should reconnect on bfcache restore without bypassing the backoff', () => {
+			const pageshow = vi
+				.mocked(window.addEventListener)
+				.mock.calls.filter(([type]) => type === 'pageshow')
+				.pop()![1] as (event: unknown) => void;
+
+			const oldPort = comms.port as any;
+			const connectCalls = vi.mocked(Browser.runtime.connect).mock.calls.length;
+			pageshow({ persisted: true });
+
+			expect(oldPort.disconnect).toHaveBeenCalled();
+			expect(comms.port).not.toBe(oldPort);
+			expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+
+			getDisconnectListener(comms.port)();
+			pageshow({ persisted: true });
+			expect(Browser.runtime.connect).toHaveBeenCalledTimes(connectCalls + 1);
+		});
+	});
+
 	// Heartbeat-related tests
 	describe('heartbeat', () => {
 		it('should trigger heartbeat resync if threshold exceeded', () => {
@@ -348,9 +441,25 @@ describe('BrowserExtensionProxyComms', () => {
 				resyncThreshold: 1000
 			});
 			comms.port = mockPort;
+			comms.store = mockStore;
 			comms.lastUpdate = now - 2000; // Exceeds threshold
 			comms['handleHeartbeat']();
 			expect(mockPort.postMessage).toHaveBeenCalledWith(syncMessage());
+		});
+
+		it('should trigger heartbeat resync if no update was received yet', () => {
+			comms = new PortProxyComms(Browser, { logger: mockLogger });
+			comms.init(mockStore);
+			mockPort.postMessage.mockClear();
+
+			comms['handleHeartbeat']();
+			expect(mockPort.postMessage).toHaveBeenCalledWith(syncMessage());
+		});
+
+		it('should not trigger heartbeat before init', () => {
+			comms = new PortProxyComms(Browser, { logger: mockLogger });
+			comms['handleHeartbeat']();
+			expect(Browser.runtime.connect).not.toHaveBeenCalled();
 		});
 
 		it('should not trigger heartbeat resync if threshold not exceeded', () => {

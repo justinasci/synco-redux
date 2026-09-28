@@ -2,14 +2,8 @@ import { type Store } from '@reduxjs/toolkit';
 import { type IProxyComms } from '../IProxyComms';
 
 import { SYNCO_ELECTRON_API_KEY, SYNCO_PORT_ID } from '../../constants';
-import {
-	isSyncMessage,
-	PATCH_STATE,
-	SYNC_GLOBAL,
-	SyncMessage,
-	syncMessage
-} from '../../syncMessage';
-import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
+import { isSyncMessage, SyncMessage, syncMessage } from '../../syncMessage';
+import { handleSyncMessage } from '../../proxyStore/handleSyncMessage';
 
 const API = SYNCO_ELECTRON_API_KEY;
 
@@ -27,7 +21,7 @@ export class ElectronProxyComms implements IProxyComms {
 			if (!isSyncMessage(message)) {
 				return;
 			}
-			this.handleMessage(store, message as SyncMessage);
+			handleSyncMessage(store, message as SyncMessage);
 		});
 
 		window[API].sendMessage(SYNCO_PORT_ID, syncMessage());
@@ -35,13 +29,5 @@ export class ElectronProxyComms implements IProxyComms {
 
 	postMessage = (message: unknown) => {
 		window[API].sendMessage(SYNCO_PORT_ID, message);
-	};
-
-	private handleMessage = (store: Store, message: SyncMessage) => {
-		if (message.type === PATCH_STATE) {
-			store.dispatch(applyPatch(message.patches));
-		} else if (message.type === SYNC_GLOBAL) {
-			store.dispatch(syncGlobal(message.state as never));
-		}
 	};
 }
