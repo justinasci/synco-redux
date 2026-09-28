@@ -2,16 +2,10 @@ import { type Store } from '@reduxjs/toolkit';
 import { IProxyComms } from '../IProxyComms';
 import type Browser from 'webextension-polyfill';
 import { SYNCO_PORT_ID } from '../../constants';
-import {
-	isSyncMessage,
-	PATCH_STATE,
-	SYNC_GLOBAL,
-	SyncMessage,
-	syncMessage
-} from '../../syncMessage';
-import { applyPatch, syncGlobal } from '../../proxyStore/proxyReducer';
+import { isSyncMessage, SyncMessage, syncMessage } from '../../syncMessage';
+import { handleSyncMessage } from '../../proxyStore/handleSyncMessage';
 import { isProxyReadySync } from '../../proxyStore/isProxyReadySync';
-import { IntervalTimer } from '../../utils/IntervalTimer';
+import { Backoff } from '../../utils/Backoff';
 import { ILogger, SilentLogger } from '../../utils/log';
 import { IProxyCommsOptions } from './IProxyCommsOptions';
 
@@ -22,16 +16,20 @@ const DEFAULT_OPTIONS: IProxyCommsOptions = {
 	enableHeartbeat: false,
 	resyncThreshold: 5000,
 	heartbeatPeriod: 1,
+	retryBaseDelay: 500,
+	retryMaxDelay: 30000,
 	logger: SilentLogger
 };
 
 export class PortProxyComms implements IProxyComms {
 	port: Browser.Runtime.Port | undefined;
-	syncIntervalTimer: IntervalTimer | undefined;
 	store: Store | undefined;
 
 	lastUpdate: number | null = null;
 	options: IProxyCommsOptions;
+
+	private reconnectBackoff: Backoff;
+	private syncRetryBackoff: Backoff;
 
 	logger: ILogger;
 
@@ -41,7 +39,11 @@ export class PortProxyComms implements IProxyComms {
 	) {
 		this.options = { ...DEFAULT_OPTIONS, ...options };
 
-		this.logger = options.logger || SilentLogger;
+		this.logger = this.options.logger;
+
+		const { retryBaseDelay, retryMaxDelay } = this.options;
+		this.reconnectBackoff = new Backoff(retryBaseDelay, retryMaxDelay);
+		this.syncRetryBackoff = new Backoff(retryBaseDelay, retryMaxDelay);
 
 		void this.setupAlarm().catch((error: unknown) => {
 			this.logger.error('failed to set up heartbeat alarm', error);
@@ -55,10 +57,8 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	connect = () => {
-		if (this.port) {
-			if (!this.port.error) {
-				return this.port;
-			}
+		if (this.getIsPortValid()) {
+			return this.port!;
 		}
 		this.port = this.openPort();
 
@@ -74,6 +74,10 @@ export class PortProxyComms implements IProxyComms {
 
 	postMessage = (message: unknown) => {
 		if (!this.getIsPortValid()) {
+			if (this.reconnectBackoff.isPending) {
+				this.logger.log('postMessage: reconnect pending, dropping message');
+				return;
+			}
 			this.logger.log('postMessage: port is not valid, setting up port');
 			this.setupPort();
 		}
@@ -81,13 +85,7 @@ export class PortProxyComms implements IProxyComms {
 		this.port?.postMessage(message);
 	};
 
-	handleMessage = (store: Store, message: SyncMessage) => {
-		if (message.type === PATCH_STATE) {
-			store.dispatch(applyPatch(message.patches));
-		} else if (message.type === SYNC_GLOBAL) {
-			store.dispatch(syncGlobal(message.state as never));
-		}
-	};
+	handleMessage = handleSyncMessage;
 
 	private getIsPortValid = () => {
 		return this.port !== undefined && !this.port.error;
@@ -101,28 +99,44 @@ export class PortProxyComms implements IProxyComms {
 		}
 
 		this.lastUpdate = Date.now();
+		this.reconnectBackoff.reset();
 
 		this.handleMessage(this.store!, message as SyncMessage);
 	};
 
 	private handleOnDisconnect = () => {
-		this.logger.warn(
-			`Disconnected due to an error: ${this.port?.error?.message}`
-		);
+		// Reading lastError marks it as checked, otherwise Chrome logs
+		// "Unchecked runtime.lastError" on every failed connect
+		const error = this.port?.error ?? this.browser.runtime.lastError;
+		this.logger.warn(`Disconnected due to an error: ${error?.message}`);
 		this.port = undefined;
+		this.stopSyncRetry();
 		if (this.store) {
-			this.setupPort();
+			this.scheduleReconnect();
 		}
 	};
 
+	private scheduleReconnect = () => {
+		const delay = this.reconnectBackoff.schedule(this.setupPort);
+		if (delay !== undefined) {
+			this.logger.info(`reconnecting in ${delay} ms`);
+		}
+	};
+
+	private stopSyncRetry = () => {
+		this.syncRetryBackoff.cancel();
+		this.syncRetryBackoff.reset();
+	};
+
 	private handleSyncRetry = () => {
-		if (isProxyReadySync(this.store!)) {
-			this.syncIntervalTimer?.stop();
+		// an invalid port is handled by the reconnect path
+		if (!this.getIsPortValid() || isProxyReadySync(this.store!)) {
 			return;
 		}
 
 		this.logger.warn('Failed to sync with main, retrying...');
 		this.postMessage(syncMessage());
+		this.syncRetryBackoff.schedule(this.handleSyncRetry);
 	};
 
 	private setupPort = () => {
@@ -136,12 +150,11 @@ export class PortProxyComms implements IProxyComms {
 			port.onDisconnect.addListener(this.handleOnDisconnect);
 		}
 
-		if (this.syncIntervalTimer) {
-			this.syncIntervalTimer.stop();
-		}
-
+		this.stopSyncRetry();
 		this.postMessage(syncMessage());
-		this.syncIntervalTimer = new IntervalTimer(this.handleSyncRetry, 500);
+		if (this.store) {
+			this.syncRetryBackoff.schedule(this.handleSyncRetry);
+		}
 	};
 
 	private handleAlarm = (alarm: Browser.Alarms.Alarm) => {
@@ -154,26 +167,20 @@ export class PortProxyComms implements IProxyComms {
 	};
 
 	private handleHeartbeat = () => {
-		if (!this.lastUpdate) {
+		if (!this.store) {
 			return;
 		}
 
-		const nextUpdateThreshold = this.lastUpdate + this.options.resyncThreshold;
-
-		const isPortConnectedButNoLastUpdate =
-			this.getIsPortValid() && !this.lastUpdate;
+		const nextUpdateThreshold =
+			(this.lastUpdate ?? 0) + this.options.resyncThreshold;
 
 		this.logger.info(
 			'heartbeat resync threshold',
 			nextUpdateThreshold,
-			this.lastUpdate,
-			{
-				nextUpdateThreshold,
-				isPortConnectedButNoLastUpdate
-			}
+			this.lastUpdate
 		);
 
-		if (nextUpdateThreshold > Date.now() && !isPortConnectedButNoLastUpdate) {
+		if (nextUpdateThreshold > Date.now()) {
 			return;
 		}
 
@@ -209,11 +216,16 @@ export class PortProxyComms implements IProxyComms {
 			if (event.persisted) {
 				if (this.port) {
 					this.logger.warn('pageshow: port is valid, reconnecting');
+					// disconnect() does not fire onDisconnect on this end
 					this.port.disconnect();
-				} else {
-					this.logger.warn('pageshow: port is not valid, setting up port');
-					this.setupPort();
+					this.port = undefined;
 				}
+				if (this.reconnectBackoff.isPending) {
+					this.logger.warn('pageshow: reconnect pending');
+					return;
+				}
+				this.logger.warn('pageshow: setting up port');
+				this.setupPort();
 			}
 		});
 	};
@@ -230,4 +242,3 @@ export class PortProxyComms implements IProxyComms {
 		});
 	};
 }
-
